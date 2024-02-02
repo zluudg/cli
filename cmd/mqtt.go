@@ -20,6 +20,7 @@ import (
 	"github.com/dnstapir/tapir"
 	"github.com/miekg/dns"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var mqttclientid string
@@ -89,7 +90,11 @@ and usage of using your command. For example: to quickly create a Cobra applicat
 			SetupSubPrinter(inbox)
 		}
 
-		var r tapir.MqttEngineResponse
+		srcname := viper.GetString("mqtt.tapir.srcname")
+		if srcname == "" {
+		   	   fmt.Printf("Error: mqtt.tapir.srcname not specified in config")
+			   os.Exit(1)
+		}
 
 		if mqttpub {
 			for {
@@ -114,13 +119,15 @@ and usage of using your command. For example: to quickly create a Cobra applicat
 					Type: "data",
 					Data: tapir.TapirMsg{
 						Msg:       msg,
+						SrcName:   srcname,
 						TimeStamp: time.Now(),
 					},
 				}
 			}
 			respch := make(chan tapir.MqttEngineResponse, 2)
 			meng.CmdChan <- tapir.MqttEngineCmd{Cmd: "stop", Resp: respch}
-			r = <-respch
+			// var r tapir.MqttEngineResponse
+			r := <-respch
 			fmt.Printf("Response from MQTT Engine: %v\n", r)
 		}
 		wg.Wait()
@@ -149,9 +156,15 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 		SetupInterruptHandler(cmnder)
 
 		var addop, names, tags string
-		var td tapir.Domain
 		var tmsg tapir.TapirMsg
 		var snames, stags []string
+		var tagmask tapir.TagMask
+
+		srcname := viper.GetString("mqtt.tapir.srcname")
+		if srcname == "" {
+		   	   fmt.Printf("Error: mqtt.tapir.srcname not specified in config")
+			   os.Exit(1)
+		}
 
 		fmt.Printf("Exit query loop by using the domain name \"QUIT\"\n")
 
@@ -165,9 +178,15 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 			}
 
 			var tds []tapir.Domain
+			tmsg = tapir.TapirMsg{
+			        SrcName:   srcname,
+				ListType:  "greylist",
+				TimeStamp: time.Now(),
+			}
+
 			if addop == "yes" {
 				tags = TtyQuestion("Tags", tags, false)
-				tagmask, err := tapir.StringsToTagMask(strings.Fields(tags))
+				tagmask, err = tapir.StringsToTagMask(strings.Fields(tags))
 				if err != nil {
 				   fmt.Printf("Error from StringToTagMask: %v", err)
 				   os.Exit(1)
@@ -175,27 +194,22 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 				if tapir.GlobalCF.Verbose {
 				   fmt.Printf("TagMask: %032b\n", tagmask)
 				}
-
-				for _, name := range snames {
-					tds = append(tds, tapir.Domain{Name: dns.Fqdn(name), Tags: stags, Tagmask: tagmask })
-				}
-				tmsg = tapir.TapirMsg{
-					Added:     tds,
-					Msg:       "it is greater to give than to take",
-					TimeStamp: time.Now(),
-				}
-			} else {
-				for _, name := range snames {
-					tds = append(tds, tapir.Domain{Name: dns.Fqdn(name)})
-				}
-				tmsg = tapir.TapirMsg{
-					Removed:   []tapir.Domain{td},
-					Msg:       "happiness is a negative diff",
-					TimeStamp: time.Now(),
-				}
+			}
+			for _, name := range snames {
+				tds = append(tds, tapir.Domain{Name: dns.Fqdn(name), Tags: stags, Tagmask: tagmask })
 			}
 
-			//			buf.Reset()
+			if addop == "yes" {
+				tmsg.Added = tds
+				tmsg.Msg = "it is greater to give than to take"
+			} else {
+//				for _, name := range snames {
+//					tds = append(tds, tapir.Domain{Name: dns.Fqdn(name)})
+//				}
+				tmsg.Removed = tds
+				tmsg.Msg = "happiness is a negative diff"
+			}
+
 			outbox <- tapir.MqttPkg{
 				Type: "data",
 				Data: tmsg,

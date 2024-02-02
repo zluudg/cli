@@ -81,8 +81,6 @@ var debugColourlistsCmd = &cobra.Command{
 
 		fmt.Printf("Received %d bytes of data\n", len(resp.Msg))
 
-//		out := []string{ "Type|Name|Count|Desc|Names" }
-		
 		for _, l := range resp.Whitelists {
 		    fmt.Printf("white:%s\tcount=%d\tdesc=%s:\n\n%v\n", l.Name, len(l.Names), l.Description, l.Names)
 		}
@@ -92,6 +90,25 @@ var debugColourlistsCmd = &cobra.Command{
 		for _, l := range resp.Greylists {
 		    fmt.Printf("grey:%s\tcount=%d\tdesc=%s:\n\n%v\n", l.Name, len(l.Names), l.Description, l.Names)
 		}
+	},
+}
+
+var debugGenRpzCmd = &cobra.Command{
+	Use:   "genrpz",
+	Short: "Return the white/black/greylists from the current data structures",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp := SendDebugCmd(tapir.DebugPost{
+			Command: "gen-output",
+		})
+		if resp.Error {
+			fmt.Printf("%s\n", resp.ErrorMsg)
+		}
+
+		fmt.Printf("Received %d bytes of data\n", len(resp.Msg))
+
+	    	fmt.Printf("black count=%d: %v\n", resp.BlacklistedNames)
+	    	fmt.Printf("grey count=%d: %v\n", resp.GreylistedNames)
+//	    	fmt.Printf("count=%d: %v\n", res.RpzOutput)
 	},
 }
 
@@ -147,7 +164,7 @@ var debugSyncZoneCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(debugcmdCmd)
-	debugcmdCmd.AddCommand(debugSyncZoneCmd, debugZoneDataCmd, debugColourlistsCmd)
+	debugcmdCmd.AddCommand(debugSyncZoneCmd, debugZoneDataCmd, debugColourlistsCmd, debugGenRpzCmd)
 
 	// Here you will define your flags and configuration settings.
 
