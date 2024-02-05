@@ -1,6 +1,6 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-*/
+ * Copyright (c) DNS TAPIR
+ */
 package cmd
 
 import (
@@ -24,27 +24,6 @@ var debugcmdCmd = &cobra.Command{
 		fmt.Println("debugcmd called")
 	},
 }
-
-// var debugDelFDmapCmd = &cobra.Command{
-// 	Use:   "delfdmap",
-// 	Short: "Return the global map DelFDmap from server",
-// 	Long: `Return the global map DelFDmap from server
-// (mostly useful with -d JSON prettyprinter).`,
-// 	Run: func(cmd *cobra.Command, args []string) {
-// 		resp := SendDebugCmd(tapir.DebugPost{
-// 			Command: "delfdmap",
-// 		})
-// 		if resp.Error {
-// 			fmt.Printf("%s\n", resp.ErrorMsg)
-// 		}
-// 		var pretty bytes.Buffer
-// 		err := json.Indent(&pretty, resp.Data.([]byte), "", "   ")
-// 		if err != nil {
-// 			fmt.Printf("JSON parse error: %v", err)
-// 		}
-// 		fmt.Printf("Received %d bytes of data: %v\n", len(resp.Msg), pretty.String())
-// 	},
-// }
 
 var debugZoneDataCmd = &cobra.Command{
 	Use:   "zonedata",
@@ -79,16 +58,16 @@ var debugColourlistsCmd = &cobra.Command{
 			fmt.Printf("%s\n", resp.ErrorMsg)
 		}
 
-		fmt.Printf("Received %d bytes of data\n", len(resp.Msg))
+//		fmt.Printf("Received %d bytes of data\n", len(resp.Msg))
 
-		for _, l := range resp.Whitelists {
-		    fmt.Printf("white:%s\tcount=%d\tdesc=%s:\n\n%v\n", l.Name, len(l.Names), l.Description, l.Names)
+		for _, l := range resp.Lists["whitelist"] {
+		    fmt.Printf("white:%s\tcount=%d\tdesc=%s:\n\n%v\n\n", l.Name, len(l.Names), l.Description, l.Names)
 		}
-		for _, l := range resp.Blacklists {
-		    fmt.Printf("black:%s\tcount=%d\tdesc=%s:\n\n%v\n", l.Name, len(l.Names), l.Description, l.Names)
+		for _, l := range resp.Lists["blacklist"] {
+		    fmt.Printf("black:%s\tcount=%d\tdesc=%s:\n\n%v\n\n", l.Name, len(l.Names), l.Description, l.Names)
 		}
-		for _, l := range resp.Greylists {
-		    fmt.Printf("grey:%s\tcount=%d\tdesc=%s:\n\n%v\n", l.Name, len(l.Names), l.Description, l.Names)
+		for _, l := range resp.Lists["greylist"] {
+		    fmt.Printf("grey:%s\tcount=%d\tdesc=%s:\n\n%v\n\n", l.Name, len(l.Names), l.Description, l.Names)
 		}
 	},
 }
@@ -109,6 +88,9 @@ var debugGenRpzCmd = &cobra.Command{
 	    	fmt.Printf("black count=%d: %v\n", resp.BlacklistedNames)
 	    	fmt.Printf("grey count=%d: %v\n", resp.GreylistedNames)
 //	    	fmt.Printf("count=%d: %v\n", res.RpzOutput)
+		for _, rr := range resp.RpzOutput {
+		    fmt.Printf("%s\n", rr.String())
+		}
 	},
 }
 
@@ -150,10 +132,6 @@ var debugSyncZoneCmd = &cobra.Command{
 		zd.Sync()
 		fmt.Printf("----- zd.RRs (post-sync): ----\n")
 		tapir.PrintRRs(zd.RRs)
-		//		zd.Digest()
-		//		fmt.Printf("----- zd.ZONEMDrrs (post-sync): ----\n")
-		//		tapir.PrintRRs(zd.ZONEMDrrs)
-		//		zd.SOA.Serial = 8914
 		zd.Sync()
 		fmt.Printf("----- zd.RRs (post-sync): ----\n")
 		tapir.PrintRRs(zd.RRs)
