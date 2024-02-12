@@ -174,6 +174,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 		fmt.Printf("Exit query loop by using the domain name \"QUIT\"\n")
 
 		var ops = []string{"add", "del", "show", "send"}
+		var tds []tapir.Domain
 		
 		for {
 			count++
@@ -186,7 +187,6 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 					break
 				}
 
-				var tds []tapir.Domain
 
 				if op == "add" {
 					tags = TtyQuestion("Tags", tags, false)
@@ -232,6 +232,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 					ListType:  "greylist",
 					TimeStamp: time.Now(),
 				}
+				tds = []tapir.Domain{}
 			}
 		}
 		respch := make(chan tapir.MqttEngineResponse, 2)
