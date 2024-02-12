@@ -4,8 +4,6 @@
 package main
 
 import (
-	_ "unsafe"
-
 	"tapir-cli/cmd"
 )
 
