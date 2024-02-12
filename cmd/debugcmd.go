@@ -22,6 +22,9 @@ var debugcmdCmd = &cobra.Command{
 	Short: "A brief description of your command",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("debugcmd called")
+
+		var tm tapir.TagMask = 345
+		fmt.Printf("%032b num tags: %d\n", tm, tm.NumTags())
 	},
 }
 
@@ -88,8 +91,8 @@ var debugGenRpzCmd = &cobra.Command{
 	    	fmt.Printf("black count=%d: %v\n", resp.BlacklistedNames)
 	    	fmt.Printf("grey count=%d: %v\n", resp.GreylistedNames)
 //	    	fmt.Printf("count=%d: %v\n", res.RpzOutput)
-		for _, rr := range resp.RpzOutput {
-		    fmt.Printf("%s\n", rr.String())
+		for _, tn := range resp.RpzOutput {
+		    fmt.Printf("%s\n", (*tn.RR).String())
 		}
 	},
 }
@@ -125,8 +128,8 @@ var debugSyncZoneCmd = &cobra.Command{
 		}
 
 		// XXX: This will be wrong for zonetype=3 (which we're using)
-		fmt.Printf("----- zd.FilteredRRs: ----\n")
-		tapir.PrintRRs(zd.FilteredRRs)
+		fmt.Printf("----- zd.BodyRRs: ----\n")
+		tapir.PrintRRs(zd.BodyRRs)
 		fmt.Printf("----- zd.RRs (pre-sync): ----\n")
 		tapir.PrintRRs(zd.RRs)
 		zd.Sync()
@@ -135,8 +138,8 @@ var debugSyncZoneCmd = &cobra.Command{
 		zd.Sync()
 		fmt.Printf("----- zd.RRs (post-sync): ----\n")
 		tapir.PrintRRs(zd.RRs)
-		fmt.Printf("----- zd.FilteredRRs: ----\n")
-		tapir.PrintRRs(zd.FilteredRRs)
+		fmt.Printf("----- zd.BodyRRs: ----\n")
+		tapir.PrintRRs(zd.BodyRRs)
 	},
 }
 

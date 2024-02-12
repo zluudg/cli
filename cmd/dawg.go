@@ -18,16 +18,12 @@ var srcformat, srcfile, dawgfile, dawgname string
 
 var dawgCmd = &cobra.Command{
 	Use:   "dawg",
-	Short: "Generate or interact with data stored in a DAWG file; must use sub-command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command.`,
+	Short: "Generate or interact with data stored in a DAWG file; only useable via sub-commands",
 }
 
 var dawgCompileCmd = &cobra.Command{
 	Use:   "compile",
 	Short: "Compile a new DAWG file from either a text or a CSV source file",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if srcfile == "" {
 			fmt.Printf("Error: source file not specified.\n")

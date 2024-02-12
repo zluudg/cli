@@ -62,10 +62,10 @@ and usage of using your command. For example: to quickly create a Cobra applicat
 
 		var pubsub uint8
 		if mqttpub {
-		   pubsub = pubsub | tapir.TapirPub
+			pubsub = pubsub | tapir.TapirPub
 		}
 		if mqttsub {
-		   pubsub = pubsub | tapir.TapirSub
+			pubsub = pubsub | tapir.TapirSub
 		}
 
 		meng, err := tapir.NewMqttEngine(mqttclientid, pubsub)
@@ -92,8 +92,8 @@ and usage of using your command. For example: to quickly create a Cobra applicat
 
 		srcname := viper.GetString("mqtt.tapir.srcname")
 		if srcname == "" {
-		   	   fmt.Printf("Error: mqtt.tapir.srcname not specified in config")
-			   os.Exit(1)
+			fmt.Printf("Error: mqtt.tapir.srcname not specified in config")
+			os.Exit(1)
 		}
 
 		if mqttpub {
@@ -155,64 +155,83 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 
 		SetupInterruptHandler(cmnder)
 
-		var addop, names, tags string
-		var tmsg tapir.TapirMsg
+		srcname := viper.GetString("mqtt.tapir.srcname")
+		if srcname == "" {
+			fmt.Printf("Error: mqtt.tapir.srcname not specified in config")
+			os.Exit(1)
+		}
+
+		var op, names, tags string
+		var tmsg = tapir.TapirMsg{
+				SrcName:   srcname,
+				ListType:  "greylist",
+				TimeStamp: time.Now(),
+			   }
+		
 		var snames, stags []string
 		var tagmask tapir.TagMask
 
-		srcname := viper.GetString("mqtt.tapir.srcname")
-		if srcname == "" {
-		   	   fmt.Printf("Error: mqtt.tapir.srcname not specified in config")
-			   os.Exit(1)
-		}
-
 		fmt.Printf("Exit query loop by using the domain name \"QUIT\"\n")
 
+		var ops = []string{"add", "del", "show", "send"}
+		
 		for {
 			count++
-			addop = TtyYesNo("Operation is \"Add domain names\"", addop)
-			names = TtyQuestion("Domain names", names, false)
-			snames = strings.Fields(names)
-			if len(snames) > 0 && strings.ToUpper(snames[0]) == "QUIT" {
-				break
-			}
-
-			var tds []tapir.Domain
-			tmsg = tapir.TapirMsg{
-			        SrcName:   srcname,
-				ListType:  "greylist",
-				TimeStamp: time.Now(),
-			}
-
-			if addop == "yes" {
-				tags = TtyQuestion("Tags", tags, false)
-				tagmask, err = tapir.StringsToTagMask(strings.Fields(tags))
-				if err != nil {
-				   fmt.Printf("Error from StringToTagMask: %v", err)
-				   os.Exit(1)
+			op = TtyRadioButtonQ("Operation", "add", ops)
+			switch op {
+			case "add", "del":
+				names = TtyQuestion("Domain names", names, false)
+				snames = strings.Fields(names)
+				if len(snames) > 0 && strings.ToUpper(snames[0]) == "QUIT" {
+					break
 				}
-				if tapir.GlobalCF.Verbose {
-				   fmt.Printf("TagMask: %032b\n", tagmask)
+
+				var tds []tapir.Domain
+
+				if op == "add" {
+					tags = TtyQuestion("Tags", tags, false)
+					tagmask, err = tapir.StringsToTagMask(strings.Fields(tags))
+					if err != nil {
+						fmt.Printf("Error from StringToTagMask: %v", err)
+						os.Exit(1)
+					}
+					if tapir.GlobalCF.Verbose {
+						fmt.Printf("TagMask: %032b\n", tagmask)
+					}
 				}
-			}
-			for _, name := range snames {
-				tds = append(tds, tapir.Domain{Name: dns.Fqdn(name), Tags: stags, Tagmask: tagmask })
-			}
+				for _, name := range snames {
+					tds = append(tds, tapir.Domain{Name: dns.Fqdn(name), Tags: stags, Tagmask: tagmask})
+				}
 
-			if addop == "yes" {
-				tmsg.Added = tds
-				tmsg.Msg = "it is greater to give than to take"
-			} else {
-//				for _, name := range snames {
-//					tds = append(tds, tapir.Domain{Name: dns.Fqdn(name)})
-//				}
-				tmsg.Removed = tds
-				tmsg.Msg = "happiness is a negative diff"
-			}
+				if op == "add" {
+					tmsg.Added = tds
+					tmsg.Msg = "it is greater to give than to take"
+				} else {
+					tmsg.Removed = tds
+					tmsg.Msg = "happiness is a negative diff"
+				}
 
-			outbox <- tapir.MqttPkg{
-				Type: "data",
-				Data: tmsg,
+			case "show":
+			     fmt.Printf("--- Added names:\n")
+			     for _, td := range tmsg.Added {
+			     	 fmt.Printf("%s (tags: %d)\n", td.Name, td.Tags)
+			     }
+			     fmt.Printf("--- Removed names:\n")
+			     for _, td := range tmsg.Removed {
+			     	 fmt.Printf("%s\n", td.Name)
+			     }
+
+			case "send":
+				outbox <- tapir.MqttPkg{
+					Type: "data",
+					Data: tmsg,
+				}
+
+				tmsg = tapir.TapirMsg{
+					SrcName:   srcname,
+					ListType:  "greylist",
+					TimeStamp: time.Now(),
+				}
 			}
 		}
 		respch := make(chan tapir.MqttEngineResponse, 2)
@@ -307,6 +326,42 @@ func TtyYesNo(query, defval string) string {
 				return val
 			}
 			fmt.Printf("Answer '%s' not accepted. Only yes or no.\n", val)
+		}
+	}
+}
+
+func TtyRadioButtonQ(query, defval string, choices []string) string {
+	var C []string
+	for _, c := range choices {
+		C = append(C, strings.ToLower(c))
+	}
+
+	allowed := func(str string) bool {
+		for _, c := range C {
+			if str == c {
+				return true
+			}
+		}
+		return false
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Printf("%s [%s]: ", query, defval)
+		text, _ := reader.ReadString('\n')
+		if text == "\n" {
+			if defval != "" {
+				fmt.Printf("[empty response, using default value]\n")
+				return defval // all ok
+			}
+			fmt.Printf("[error: default value is empty string, not allowed]\n")
+			continue
+		} else {
+			val := strings.ToLower(strings.TrimSuffix(text, "\n"))
+			if allowed(val) {
+				return val
+			}
+			fmt.Printf("Answer '%s' not accepted. Possible choices are: %v\n", val, choices)
 		}
 	}
 }
