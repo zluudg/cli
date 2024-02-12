@@ -12,7 +12,7 @@ import (
 	"os"
 
 	"github.com/dnstapir/tapir"
-//	"github.com/ryanuber/columnize"
+	//	"github.com/ryanuber/columnize"
 	"github.com/miekg/dns"
 	"github.com/spf13/cobra"
 )
@@ -42,11 +42,11 @@ var debugZoneDataCmd = &cobra.Command{
 			fmt.Printf("%s\n", resp.ErrorMsg)
 		}
 
-//		zd := resp.ZoneData
+		//		zd := resp.ZoneData
 
 		fmt.Printf("Received %d bytes of data\n", len(resp.Msg))
-//		fmt.Printf("Zone %s: RRs: %d Owners: %d\n", tapir.GlobalCF.Zone,
-//			len(zd.RRs), len(zd.Owners))
+		//		fmt.Printf("Zone %s: RRs: %d Owners: %d\n", tapir.GlobalCF.Zone,
+		//			len(zd.RRs), len(zd.Owners))
 	},
 }
 
@@ -61,16 +61,16 @@ var debugColourlistsCmd = &cobra.Command{
 			fmt.Printf("%s\n", resp.ErrorMsg)
 		}
 
-//		fmt.Printf("Received %d bytes of data\n", len(resp.Msg))
+		//		fmt.Printf("Received %d bytes of data\n", len(resp.Msg))
 
 		for _, l := range resp.Lists["whitelist"] {
-		    fmt.Printf("white:%s\tcount=%d\tdesc=%s:\n\n%v\n\n", l.Name, len(l.Names), l.Description, l.Names)
+			fmt.Printf("white:%s\tcount=%d\tdesc=%s:\n\n%v\n\n", l.Name, len(l.Names), l.Description, l.Names)
 		}
 		for _, l := range resp.Lists["blacklist"] {
-		    fmt.Printf("black:%s\tcount=%d\tdesc=%s:\n\n%v\n\n", l.Name, len(l.Names), l.Description, l.Names)
+			fmt.Printf("black:%s\tcount=%d\tdesc=%s:\n\n%v\n\n", l.Name, len(l.Names), l.Description, l.Names)
 		}
 		for _, l := range resp.Lists["greylist"] {
-		    fmt.Printf("grey:%s\tcount=%d\tdesc=%s:\n\n%v\n\n", l.Name, len(l.Names), l.Description, l.Names)
+			fmt.Printf("grey:%s\tcount=%d\tdesc=%s:\n\n%v\n\n", l.Name, len(l.Names), l.Description, l.Names)
 		}
 	},
 }
@@ -88,11 +88,11 @@ var debugGenRpzCmd = &cobra.Command{
 
 		fmt.Printf("Received %d bytes of data\n", len(resp.Msg))
 
-	    	fmt.Printf("black count=%d: %v\n", resp.BlacklistedNames)
-	    	fmt.Printf("grey count=%d: %v\n", resp.GreylistedNames)
-//	    	fmt.Printf("count=%d: %v\n", res.RpzOutput)
+		fmt.Printf("black count=%d: %v\n", resp.BlacklistedNames)
+		fmt.Printf("grey count=%d: %v\n", resp.GreylistedNames)
+		//	    	fmt.Printf("count=%d: %v\n", res.RpzOutput)
 		for _, tn := range resp.RpzOutput {
-		    fmt.Printf("%s\n", (*tn.RR).String())
+			fmt.Printf("%s\n", (*tn.RR).String())
 		}
 	},
 }
@@ -116,10 +116,10 @@ var debugSyncZoneCmd = &cobra.Command{
 		}
 
 		zd := tapir.ZoneData{
-			ZoneType: 3, // zonetype=3 keeps RRs in a []OwnerData, with an OwnerIndex map[string]int to locate stuff
-			ZoneName: tapir.GlobalCF.Zone,
+			ZoneType:   3, // zonetype=3 keeps RRs in a []OwnerData, with an OwnerIndex map[string]int to locate stuff
+			ZoneName:   tapir.GlobalCF.Zone,
 			RRKeepFunc: func(uint16) bool { return true },
-			Logger:   log.Default(),
+			Logger:     log.Default(),
 		}
 
 		_, err := zd.ReadZoneFile(zonefile)
@@ -177,8 +177,8 @@ func SendDebugCmd(data tapir.DebugPost) tapir.DebugResponse {
 	if err != nil {
 		fmt.Printf("JSON parse error: %v", err)
 	}
-//	fmt.Printf("Received %d bytes of data: %v\n", len(buf), pretty.String())
-//	os.Exit(1)
+	//	fmt.Printf("Received %d bytes of data: %v\n", len(buf), pretty.String())
+	//	os.Exit(1)
 
 	err = json.Unmarshal(buf, &dr)
 	if err != nil {

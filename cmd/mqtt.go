@@ -163,18 +163,18 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 
 		var op, names, tags string
 		var tmsg = tapir.TapirMsg{
-				SrcName:   srcname,
-				ListType:  "greylist",
-				TimeStamp: time.Now(),
-			   }
-		
+			SrcName:   srcname,
+			ListType:  "greylist",
+			TimeStamp: time.Now(),
+		}
+
 		var snames, stags []string
 		var tagmask tapir.TagMask
 
 		fmt.Printf("Exit query loop by using the domain name \"QUIT\"\n")
 
 		var ops = []string{"add", "del", "show", "send"}
-		
+
 		for {
 			count++
 			op = TtyRadioButtonQ("Operation", "add", ops)
@@ -212,14 +212,14 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 				}
 
 			case "show":
-			     fmt.Printf("--- Added names:\n")
-			     for _, td := range tmsg.Added {
-			     	 fmt.Printf("%s (tags: %d)\n", td.Name, td.Tags)
-			     }
-			     fmt.Printf("--- Removed names:\n")
-			     for _, td := range tmsg.Removed {
-			     	 fmt.Printf("%s\n", td.Name)
-			     }
+				fmt.Printf("--- Added names:\n")
+				for _, td := range tmsg.Added {
+					fmt.Printf("%s (tags: %d)\n", td.Name, td.Tags)
+				}
+				fmt.Printf("--- Removed names:\n")
+				for _, td := range tmsg.Removed {
+					fmt.Printf("%s\n", td.Name)
+				}
 
 			case "send":
 				outbox <- tapir.MqttPkg{

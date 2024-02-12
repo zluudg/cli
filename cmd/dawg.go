@@ -117,14 +117,14 @@ and usage of using your command.`,
 		}
 
 		if tapir.GlobalCF.Debug {
-		   fmt.Printf("DAWG has %d nodes, %d added and %d edges.\n", dawgf.NumNodes(),
-				     	dawgf.NumAdded(), dawgf.NumEdges())
+			fmt.Printf("DAWG has %d nodes, %d added and %d edges.\n", dawgf.NumNodes(),
+				dawgf.NumAdded(), dawgf.NumEdges())
 		}
 
 		count, result := tapir.ListDawg(dawgf)
 		fmt.Printf("%v\n", result)
 		if tapir.GlobalCF.Verbose {
-		   fmt.Printf("Enumeration func was called %d times\n", count)
+			fmt.Printf("Enumeration func was called %d times\n", count)
 		}
 	},
 }
@@ -139,10 +139,10 @@ func init() {
 		"Format of text file, either cvs or text")
 	dawgCompileCmd.Flags().StringVarP(&srcfile, "src", "", "",
 		"Name of source text file")
-//	dawgCompileCmd.Flags().StringVarP(&outfile, "outfile", "", "",
-//		"Name of outfile, must end in \".dawg\"")
-//	dawgLookupCmd.Flags().StringVarP(&dawgfile, "dawg", "", "",
-//		"Name of DAWG file")
+	//	dawgCompileCmd.Flags().StringVarP(&outfile, "outfile", "", "",
+	//		"Name of outfile, must end in \".dawg\"")
+	//	dawgLookupCmd.Flags().StringVarP(&dawgfile, "dawg", "", "",
+	//		"Name of DAWG file")
 	dawgLookupCmd.Flags().StringVarP(&dawgname, "name", "", "",
 		"Name to look up")
 	dawgListCmd.Flags().StringVarP(&dawgname, "name", "", "",
