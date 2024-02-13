@@ -174,7 +174,6 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 
 		var ops = []string{"add", "del", "show", "send", "list-tags", "quit"}
 		fmt.Printf("Defined operations are: %v\n", ops)
-		fmt.Printf("Exit query loop by using the domain name \"QUIT\"\n")
 
 		var tds []tapir.Domain
 
