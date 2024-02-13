@@ -8,6 +8,7 @@ require (
 	github.com/dnstapir/tapir v0.0.0-00010101000000-000000000000
 	github.com/go-playground/validator/v10 v10.9.0
 	github.com/miekg/dns v1.1.57
+	github.com/ryanuber/columnize v2.1.2+incompatible
 	github.com/smhanov/dawg v0.0.0-20220118194912-66057bdbf2e3
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.18.1
@@ -16,7 +17,7 @@ require (
 require (
 	github.com/Pashugan/trie v0.0.0-20230121015024-96f8fcbb2af1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
-	github.com/eclipse/paho.golang v0.12.0 // indirect
+	github.com/eclipse/paho.golang v0.20.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
@@ -49,7 +50,6 @@ require (
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.13.0 // indirect

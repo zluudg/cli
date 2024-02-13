@@ -19,6 +19,7 @@ import (
 
 	"github.com/dnstapir/tapir"
 	"github.com/miekg/dns"
+	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -163,63 +164,83 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 
 		var op, names, tags string
 		var tmsg = tapir.TapirMsg{
-				SrcName:   srcname,
-				ListType:  "greylist",
-				TimeStamp: time.Now(),
-			   }
-		
-		var snames, stags []string
+			SrcName:   srcname,
+			ListType:  "greylist",
+			TimeStamp: time.Now(),
+		}
+
+		var snames []string
 		var tagmask tapir.TagMask
 
+		var ops = []string{"add", "del", "show", "send", "list-tags", "quit"}
+		fmt.Printf("Defined operations are: %v\n", ops)
 		fmt.Printf("Exit query loop by using the domain name \"QUIT\"\n")
 
-		var ops = []string{"add", "del", "show", "send"}
 		var tds []tapir.Domain
-		
+
+	cmdloop:
 		for {
 			count++
 			op = TtyRadioButtonQ("Operation", "add", ops)
 			switch op {
+			case "quit":
+				fmt.Println("QUIT cmd recieved.")
+				break cmdloop
+
 			case "add", "del":
 				names = TtyQuestion("Domain names", names, false)
 				snames = strings.Fields(names)
 				if len(snames) > 0 && strings.ToUpper(snames[0]) == "QUIT" {
-					break
+					break cmdloop
 				}
 
-
 				if op == "add" {
-					tags = TtyQuestion("Tags", tags, false)
-					tagmask, err = tapir.StringsToTagMask(strings.Fields(tags))
-					if err != nil {
-						fmt.Printf("Error from StringToTagMask: %v", err)
-						os.Exit(1)
+				retry:
+					for {
+						tags = TtyQuestion("Tags", tags, false)
+						tagmask, err = tapir.StringsToTagMask(strings.Fields(tags))
+						if err != nil {
+							fmt.Printf("Error from StringsToTagMask: %v\n", err)
+							fmt.Printf("Defined tags are: %v\n", tapir.DefinedTags)
+							continue retry
+						}
+						break
 					}
 					if tapir.GlobalCF.Verbose {
 						fmt.Printf("TagMask: %032b\n", tagmask)
 					}
 				}
 				for _, name := range snames {
-					tds = append(tds, tapir.Domain{Name: dns.Fqdn(name), Tags: stags, Tagmask: tagmask})
+					tds = append(tds, tapir.Domain{Name: dns.Fqdn(name), TagMask: tagmask})
 				}
 
 				if op == "add" {
-					tmsg.Added = tds
+					tmsg.Added = append(tmsg.Added, tds...)
 					tmsg.Msg = "it is greater to give than to take"
 				} else {
-					tmsg.Removed = tds
+					tmsg.Removed = append(tmsg.Removed, tds...)
 					tmsg.Msg = "happiness is a negative diff"
 				}
+				tds = []tapir.Domain{}
 
 			case "show":
-			     fmt.Printf("--- Added names:\n")
-			     for _, td := range tmsg.Added {
-			     	 fmt.Printf("%s (tags: %d)\n", td.Name, td.Tags)
-			     }
-			     fmt.Printf("--- Removed names:\n")
-			     for _, td := range tmsg.Removed {
-			     	 fmt.Printf("%s\n", td.Name)
-			     }
+				var out = []string{"Domain|Tags"}
+				for _, td := range tmsg.Added {
+					out = append(out, fmt.Sprintf("ADD: %s|%032b", td.Name, td.TagMask))
+				}
+				for _, td := range tmsg.Removed {
+					out = append(out, fmt.Sprintf("DEL: %s", td.Name))
+				}
+				fmt.Println(columnize.SimpleFormat(out))
+
+			case "list-tags":
+				var out = []string{"Name|Bit"}
+				var tagmask tapir.TagMask
+				for _, t := range tapir.DefinedTags {
+					tagmask, _ = tapir.StringsToTagMask([]string{t})
+					out = append(out, fmt.Sprintf("%s|%032b", t, tagmask))
+				}
+				fmt.Println(columnize.SimpleFormat(out))
 
 			case "send":
 				outbox <- tapir.MqttPkg{
@@ -258,7 +279,15 @@ func SetupSubPrinter(inbox chan tapir.MqttPkg) {
 		for {
 			select {
 			case pkg = <-inbox:
-				fmt.Printf("Received TAPIR MQTT Message: %s\n", pkg.Data)
+				var out []string
+				fmt.Printf("Received TAPIR MQTT Message:\n")
+				for _, a := range pkg.Data.Added {
+					out = append(out, fmt.Sprintf("ADD: %s|%032b", a.Name, a.TagMask))
+				}
+				for _, a := range pkg.Data.Removed {
+					out = append(out, fmt.Sprintf("DEL: %s", a.Name))
+				}
+				fmt.Println(columnize.SimpleFormat(out))
 			}
 		}
 	}()
