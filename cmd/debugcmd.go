@@ -116,9 +116,9 @@ var debugSyncZoneCmd = &cobra.Command{
 		}
 
 		zd := tapir.ZoneData{
-			ZoneType:   3, // zonetype=3 keeps RRs in a []OwnerData, with an OwnerIndex map[string]int to locate stuff
-			ZoneName:   tapir.GlobalCF.Zone,
-			Logger:     log.Default(),
+			ZoneType: 3, // zonetype=3 keeps RRs in a []OwnerData, with an OwnerIndex map[string]int to locate stuff
+			ZoneName: tapir.GlobalCF.Zone,
+			Logger:   log.Default(),
 		}
 
 		_, err := zd.ReadZoneFile(zonefile)
