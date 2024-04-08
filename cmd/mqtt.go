@@ -6,6 +6,8 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"strconv"
+
 	//	"encoding/json"
 	"fmt"
 	"io"
@@ -27,24 +29,24 @@ import (
 var mqttclientid string
 var mqttpub, mqttsub bool
 
-var testMsg = tapir.TapirMsg{
-	MsgType: "intel-update",
-	Added: []tapir.Domain{
-		tapir.Domain{
-			Name: "frobozz.com.",
-			Tags: []string{"new", "high-volume", "bad-ip"},
-		},
-		tapir.Domain{
-			Name: "johani.org.",
-			Tags: []string{"old", "low-volume", "good-ip"},
-		},
-	},
-	Removed: []tapir.Domain{
-		tapir.Domain{
-			Name: "dnstapir.se.",
-		},
-	},
-}
+// var testMsg = tapir.TapirMsg{
+//	MsgType: "intel-update",
+//	Added: []tapir.Domain{
+//		tapir.Domain{
+//			Name: "frobozz.com.",
+//			Tags: []string{"new", "high-volume", "bad-ip"},
+//		},
+//		tapir.Domain{
+//			Name: "johani.org.",
+//			Tags: []string{"old", "low-volume", "good-ip"},
+//		},
+//	},
+//	Removed: []tapir.Domain{
+//		tapir.Domain{
+//			Name: "dnstapir.se.",
+//		},
+//	},
+// }
 
 var mqttCmd = &cobra.Command{
 	Use:   "mqtt",
@@ -172,10 +174,11 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 		var snames []string
 		var tagmask tapir.TagMask
 
-		var ops = []string{"add", "del", "show", "send", "list-tags", "quit"}
+		var ops = []string{"add", "del", "show", "send", "set-ttl", "list-tags", "quit"}
 		fmt.Printf("Defined operations are: %v\n", ops)
 
 		var tds []tapir.Domain
+		var ttl time.Duration = 60 * time.Second
 
 	cmdloop:
 		for {
@@ -186,6 +189,11 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 				fmt.Println("QUIT cmd recieved.")
 				break cmdloop
 
+			case "set-ttl":
+				tmp := TtyIntQuestion("TTL (in seconds)", 60, false)
+				fmt.Printf("TTL: got: %d\n", tmp)
+				ttl = time.Duration(tmp) * time.Second
+				fmt.Printf("TTL: got: %d ttl: %v\n", tmp, ttl)
 			case "add", "del":
 				names = TtyQuestion("Domain names", names, false)
 				snames = strings.Fields(names)
@@ -210,7 +218,12 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 					}
 				}
 				for _, name := range snames {
-					tds = append(tds, tapir.Domain{Name: dns.Fqdn(name), TagMask: tagmask})
+					tds = append(tds, tapir.Domain{
+						Name:      dns.Fqdn(name),
+						TimeAdded: time.Now(),
+						TTL:       ttl,
+						TagMask:   tagmask,
+					})
 				}
 
 				if op == "add" {
@@ -333,6 +346,33 @@ func TtyQuestion(query, oldval string, force bool) string {
 		} else {
 			// regardless of force we accept non-empty response
 			return strings.TrimSuffix(text, "\n")
+		}
+	}
+}
+
+func TtyIntQuestion(query string, oldval int, force bool) int {
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Printf("%s [%d]: ", query, oldval)
+		text, _ := reader.ReadString('\n')
+		if text == "\n" {
+			fmt.Printf("[empty response, keeping previous value]\n")
+			if oldval != 0 {
+				return oldval // all ok
+			} else if force {
+				fmt.Printf("[error: previous value was empty string, not allowed]\n")
+				continue
+			}
+			return oldval
+		} else {
+			text = tapir.Chomp(text)
+			// regardless of force we accept non-empty response
+			val, err := strconv.Atoi(text)
+			if err != nil {
+				fmt.Printf("Error: %s is not an integer\n", text)
+				continue
+			}
+			return val
 		}
 	}
 }

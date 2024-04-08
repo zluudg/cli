@@ -156,7 +156,7 @@ func CompileDawgFromCSV(srcfile, outfile string) {
 		os.Exit(1)
 	}
 
-	sortednames, err := tapir.ParseCSV(srcfile, map[string]tapir.TapirName{}, false)
+	sortednames, err := tapir.ParseCSV(srcfile, map[string]*tapir.TapirName{}, false)
 	if err != nil {
 		fmt.Printf("Error parsing CSV source \"%s\": %v\n", srcfile, err)
 		os.Exit(1)
@@ -185,7 +185,7 @@ func CompileDawgFromText(srcfile, outfile string) {
 		os.Exit(1)
 	}
 
-	sortednames, err := tapir.ParseText(srcfile, map[string]tapir.TapirName{}, false)
+	sortednames, err := tapir.ParseText(srcfile, map[string]*tapir.TapirName{}, false)
 	if err != nil {
 		fmt.Printf("Error parsing text source \"%s\": %v\n", srcfile, err)
 		os.Exit(1)
