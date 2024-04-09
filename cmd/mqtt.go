@@ -178,7 +178,8 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 		fmt.Printf("Defined operations are: %v\n", ops)
 
 		var tds []tapir.Domain
-		var ttl time.Duration = 60 * time.Second
+		// var ttl time.Duration = 60 * time.Second
+		var ttl int = 60
 
 	cmdloop:
 		for {
@@ -190,10 +191,10 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 				break cmdloop
 
 			case "set-ttl":
-				tmp := TtyIntQuestion("TTL (in seconds)", 60, false)
-				fmt.Printf("TTL: got: %d\n", tmp)
-				ttl = time.Duration(tmp) * time.Second
-				fmt.Printf("TTL: got: %d ttl: %v\n", tmp, ttl)
+				ttl = TtyIntQuestion("TTL (in seconds)", 60, false)
+				// fmt.Printf("TTL: got: %d\n", tmp)
+				// ttl = time.Duration(tmp) * time.Second
+				// fmt.Printf("TTL: got: %d ttl: %v\n", tmp, ttl)
 			case "add", "del":
 				names = TtyQuestion("Domain names", names, false)
 				snames = strings.Fields(names)
