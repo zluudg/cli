@@ -1,6 +1,6 @@
 mqtt:
    server:		mqtt.dev.dnstapir.se:8883
-   uid:			johani
+#   uid:			johani
    clientid:		johani
    topic:		events/up/johani/frobozz
    cacert:		/etc/dnstapir/certs/tapirCA.crt

@@ -18,6 +18,10 @@ ${PROG}: build
 build:  
 	/bin/sh make-version.sh $(VERSION)-$(COMMIT) $(APPDATE) $(PROG)
 	$(GO) build $(GOFLAGS) -o ${PROG}
+
+linux:  
+	/bin/sh make-version.sh $(VERSION)-$(COMMIT) $(APPDATE) $(PROG)
+	GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -o ${PROG}
 # ----
 # VERSION:=$(shell git describe --dirty=+WiP --always)
 # VERSION:=`git describe --dirty=+WiP --always`

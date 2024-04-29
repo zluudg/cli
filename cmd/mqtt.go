@@ -149,6 +149,13 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 			os.Exit(1)
 		}
 
+		topic := viper.GetString("mqtt.topic")
+		valkey, err := tapir.FetchMqttValidatorKey(topic, viper.GetString("mqtt.validatorkey"))
+		if err != nil {
+			log.Fatalf("Error fetching MQTT validator key: %v", err)
+		}
+		meng.AddTopic(topic, valkey)
+
 		cmnder, outbox, _, err := meng.StartEngine()
 		if err != nil {
 			log.Fatalf("Error from StartEngine(): %v", err)
