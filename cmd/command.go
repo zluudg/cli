@@ -30,8 +30,29 @@ var BumpCmd = &cobra.Command{
 	},
 }
 
+var TemCmd = &cobra.Command{
+	Use:   "tem",
+	Short: "Prefix command to TEM, only usable via sub-commands",
+}
+
+var TemStopCmd = &cobra.Command{
+	Use:   "stop",
+	Short: "Instruct TEM to stop",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp := SendCommandCmd(tapir.CommandPost{
+			Command: "stop",
+		})
+		if resp.Error {
+			fmt.Printf("%s\n", resp.ErrorMsg)
+		}
+
+		fmt.Printf("%s\n", resp.Msg)
+	},
+}
+
 func init() {
-	rootCmd.AddCommand(BumpCmd)
+	rootCmd.AddCommand(BumpCmd, TemCmd)
+	TemCmd.AddCommand(TemStopCmd)
 
 	BumpCmd.Flags().StringVarP(&tapir.GlobalCF.Zone, "zone", "z", "", "Zone name")
 }
