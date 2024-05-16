@@ -35,6 +35,11 @@ var TemCmd = &cobra.Command{
 	Short: "Prefix command to TEM, only usable via sub-commands",
 }
 
+var TemMqttCmd = &cobra.Command{
+	Use:   "mqtt",
+	Short: "Prefix command to TEM MQTT, only usable via sub-commands",
+}
+
 var TemStopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Instruct TEM to stop",
@@ -50,9 +55,55 @@ var TemStopCmd = &cobra.Command{
 	},
 }
 
+var TemMqttStartCmd = &cobra.Command{
+	Use:   "start",
+	Short: "Instruct TEM MQTT Engine to start",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp := SendCommandCmd(tapir.CommandPost{
+			Command: "mqtt-start",
+		})
+		if resp.Error {
+			fmt.Printf("%s\n", resp.ErrorMsg)
+		}
+
+		fmt.Printf("%s\n", resp.Msg)
+	},
+}
+
+var TemMqttStopCmd = &cobra.Command{
+	Use:   "stop",
+	Short: "Instruct TEM MQTT Engine to stop",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp := SendCommandCmd(tapir.CommandPost{
+			Command: "mqtt-stop",
+		})
+		if resp.Error {
+			fmt.Printf("%s\n", resp.ErrorMsg)
+		}
+
+		fmt.Printf("%s\n", resp.Msg)
+	},
+}
+
+var TemMqttRestartCmd = &cobra.Command{
+	Use:   "restart",
+	Short: "Instruct TEM MQTT Engine to restart",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp := SendCommandCmd(tapir.CommandPost{
+			Command: "mqtt-restart",
+		})
+		if resp.Error {
+			fmt.Printf("%s\n", resp.ErrorMsg)
+		}
+
+		fmt.Printf("%s\n", resp.Msg)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(BumpCmd, TemCmd)
-	TemCmd.AddCommand(TemStopCmd)
+	TemCmd.AddCommand(TemStopCmd, TemMqttCmd)
+	TemMqttCmd.AddCommand(TemMqttStartCmd, TemMqttStopCmd, TemMqttRestartCmd)
 
 	BumpCmd.Flags().StringVarP(&tapir.GlobalCF.Zone, "zone", "z", "", "Zone name")
 }

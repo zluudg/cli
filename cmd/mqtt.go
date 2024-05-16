@@ -71,7 +71,7 @@ and usage of using your command. For example: to quickly create a Cobra applicat
 			pubsub = pubsub | tapir.TapirSub
 		}
 
-		meng, err := tapir.NewMqttEngine(mqttclientid, pubsub)
+		meng, err := tapir.NewMqttEngine(mqttclientid, pubsub, log.Default())
 		if err != nil {
 			fmt.Printf("Error from NewMqttEngine: %v\n", err)
 			os.Exit(1)
@@ -143,7 +143,7 @@ var mqttIntelUpdateCmd = &cobra.Command{
 	Long: `Will query for operation (add|del), domain name and tags.
 Will end the loop on the operation (or domain name) "QUIT"`,
 	Run: func(cmd *cobra.Command, args []string) {
-		meng, err := tapir.NewMqttEngine(mqttclientid, tapir.TapirPub) // pub, no sub
+		meng, err := tapir.NewMqttEngine(mqttclientid, tapir.TapirPub, log.Default()) // pub, no sub
 		if err != nil {
 			fmt.Printf("Error from NewMqttEngine: %v\n", err)
 			os.Exit(1)
@@ -174,6 +174,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 		var op, names, tags string
 		var tmsg = tapir.TapirMsg{
 			SrcName:   srcname,
+			Creator:   "tapir-cli",
 			ListType:  "greylist",
 			TimeStamp: time.Now(),
 		}
@@ -270,6 +271,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 
 				tmsg = tapir.TapirMsg{
 					SrcName:   srcname,
+					Creator:   "tapir-cli",
 					ListType:  "greylist",
 					TimeStamp: time.Now(),
 				}
