@@ -5,23 +5,27 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/dnstapir/tapir"
+	"github.com/ryanuber/columnize"
+
 	//	"github.com/ryanuber/columnize"
 	"github.com/miekg/dns"
 	"github.com/spf13/cobra"
 )
 
 var debugcmdCmd = &cobra.Command{
-	Use:   "debugcmd",
+	Use:   "debug",
 	Short: "A brief description of your command",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("debugcmd called")
+		fmt.Println("debug called")
 
 		var tm tapir.TagMask = 345
 		fmt.Printf("%032b num tags: %d\n", tm, tm.NumTags())
@@ -47,6 +51,9 @@ var debugZoneDataCmd = &cobra.Command{
 		fmt.Printf("Received %d bytes of data\n", len(resp.Msg))
 		//		fmt.Printf("Zone %s: RRs: %d Owners: %d\n", tapir.GlobalCF.Zone,
 		//			len(zd.RRs), len(zd.Owners))
+		if resp.Msg != "" {
+			fmt.Printf("%s\n", resp.Msg)
+		}
 	},
 }
 
@@ -97,6 +104,58 @@ var debugGenRpzCmd = &cobra.Command{
 	},
 }
 
+var debugMqttStatsCmd = &cobra.Command{
+	Use:   "mqtt-stats",
+	Short: "Return the MQTT stats counters from the MQTT Engine",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp := SendDebugCmd(tapir.DebugPost{
+			Command: "mqtt-stats",
+		})
+		if resp.Error {
+			fmt.Printf("%s\n", resp.ErrorMsg)
+		}
+		if resp.Msg != "" {
+			fmt.Printf("%s\n", resp.Msg)
+		}
+
+		var out = []string{"MQTT Topic|Msgs|Last MQTT Message|Time since last msg"}
+		for topic, count := range resp.MqttStats.MsgCounter {
+			t := resp.MqttStats.MsgTimeStamp[topic]
+			out = append(out, fmt.Sprintf("%s|%d|%s|%v\n", topic, count, t.Format(timelayout), time.Now().Sub(t)))
+		}
+		fmt.Printf("%s\n", columnize.SimpleFormat(out))
+	},
+}
+
+var debugReaperStatsCmd = &cobra.Command{
+	Use:   "reaper-stats",
+	Short: "Return the reaper status for all known greylists",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp := SendDebugCmd(tapir.DebugPost{
+			Command: "reaper-stats",
+		})
+		if resp.Error {
+			fmt.Printf("%s\n", resp.ErrorMsg)
+		}
+		if resp.Msg != "" {
+			fmt.Printf("%s\n", resp.Msg)
+		}
+
+		for greylist, data := range resp.ReaperStats {
+			if len(data) == 0 {
+				fmt.Printf("No reaper data for greylist %s\n", greylist)
+				continue
+			}
+			fmt.Printf("From greylist %s at the following times these names will be deleted:\n", greylist)
+			out := []string{"Time|Count|Names"}
+			for t, d := range data {
+				out = append(out, fmt.Sprintf("%s|%d|%v", t.Format(timelayout), len(d), d))
+			}
+			fmt.Printf("%s\n", columnize.SimpleFormat(out))
+		}
+	},
+}
+
 var zonefile string
 
 var debugSyncZoneCmd = &cobra.Command{
@@ -142,9 +201,48 @@ var debugSyncZoneCmd = &cobra.Command{
 	},
 }
 
+var debugImportDnsTapirGreylistCmd = &cobra.Command{
+	Use:   "import-dns-tapir-greylist",
+	Short: "Import the dns-tapir greylist data from the server",
+	Run: func(cmd *cobra.Command, args []string) {
+		// importDnsTapirGreylist()
+
+		//		resp := SendCommandCmd(tapir.CommandPost{
+		//			Command: "export-greylist-dns-tapir",
+		//		})
+		status, buf, err := api.RequestNG(http.MethodPost, "/command", tapir.CommandPost{
+			Command: "export-greylist-dns-tapir",
+		}, true)
+		if err != nil {
+			fmt.Printf("Error from RequestNG: %v\n", err)
+			return
+		}
+		if status != http.StatusOK {
+			fmt.Printf("HTTP Error: %s\n", buf)
+			return
+		}
+		//		if resp.Error {
+		//			fmt.Printf("Error: %s\n", resp.ErrorMsg)
+		//			return
+		//		}
+
+		var greylist tapir.WBGlist
+		decoder := gob.NewDecoder(bytes.NewReader(buf))
+		err = decoder.Decode(&greylist)
+		if err != nil {
+			fmt.Printf("Error decoding greylist data: %v\n", err)
+			return
+		}
+
+		fmt.Printf("%v\n", greylist)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(debugcmdCmd)
 	debugcmdCmd.AddCommand(debugSyncZoneCmd, debugZoneDataCmd, debugColourlistsCmd, debugGenRpzCmd)
+	debugcmdCmd.AddCommand(debugMqttStatsCmd, debugReaperStatsCmd)
+	debugcmdCmd.AddCommand(debugImportDnsTapirGreylistCmd)
 
 	// Here you will define your flags and configuration settings.
 
