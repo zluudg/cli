@@ -201,22 +201,27 @@ var debugSyncZoneCmd = &cobra.Command{
 	},
 }
 
-var debugImportDnsTapirGreylistCmd = &cobra.Command{
-	Use:   "import-dns-tapir-greylist",
-	Short: "Import the dns-tapir greylist data from the server",
-	Run: func(cmd *cobra.Command, args []string) {
-		// importDnsTapirGreylist()
+var Listname string
 
-		//		resp := SendCommandCmd(tapir.CommandPost{
-		//			Command: "export-greylist-dns-tapir",
-		//		})
-		status, buf, err := api.RequestNG(http.MethodPost, "/command", tapir.CommandPost{
-			Command: "export-greylist-dns-tapir",
+var debugImportGreylistCmd = &cobra.Command{
+	Use:   "import-greylist",
+	Short: "Import the current data for the named greylist from the TEM bootstrap server",
+	Run: func(cmd *cobra.Command, args []string) {
+
+		if Listname == "" {
+			fmt.Printf("No greylist name specified, using 'dns-tapir'\n")
+			Listname = "dns-tapir"
+		}
+
+		status, buf, err := api.RequestNG(http.MethodPost, "/bootstrap", tapir.BootstrapPost{
+			Command:  "export-greylist",
+			ListName: Listname,
 		}, true)
 		if err != nil {
 			fmt.Printf("Error from RequestNG: %v\n", err)
 			return
 		}
+
 		if status != http.StatusOK {
 			fmt.Printf("HTTP Error: %s\n", buf)
 			return
@@ -230,11 +235,30 @@ var debugImportDnsTapirGreylistCmd = &cobra.Command{
 		decoder := gob.NewDecoder(bytes.NewReader(buf))
 		err = decoder.Decode(&greylist)
 		if err != nil {
-			fmt.Printf("Error decoding greylist data: %v\n", err)
+			// fmt.Printf("Error decoding greylist data: %v\n", err)
+			// If decoding the gob failed, perhaps we received a tapir.CommandResponse instead?
+			var cr tapir.CommandResponse
+			err = json.Unmarshal(buf, &cr)
+			if err != nil {
+				fmt.Printf("Error decoding response either as a GOB blob or as a tapir.CommandResponse: %v. Giving up.\n", err)
+				return
+			}
+			if cr.Error {
+				fmt.Printf("Command Error: %s\n", cr.ErrorMsg)
+			}
+			if len(cr.Msg) != 0 {
+				fmt.Printf("Command response: %s\n", cr.Msg)
+			}
 			return
 		}
 
 		fmt.Printf("%v\n", greylist)
+		fmt.Printf("Names present in greylist %s:\n", Listname)
+		out := []string{"Name|Time added|TTL|Tags"}
+		for _, n := range greylist.Names {
+			out = append(out, fmt.Sprintf("%s|%v|%v|%v", n.Name, n.TimeAdded.Format(timelayout), n.TTL, n.TagMask))
+		}
+		fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	},
 }
 
@@ -242,7 +266,7 @@ func init() {
 	rootCmd.AddCommand(debugcmdCmd)
 	debugcmdCmd.AddCommand(debugSyncZoneCmd, debugZoneDataCmd, debugColourlistsCmd, debugGenRpzCmd)
 	debugcmdCmd.AddCommand(debugMqttStatsCmd, debugReaperStatsCmd)
-	debugcmdCmd.AddCommand(debugImportDnsTapirGreylistCmd)
+	debugcmdCmd.AddCommand(debugImportGreylistCmd)
 
 	// Here you will define your flags and configuration settings.
 
@@ -252,6 +276,7 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
+	debugImportGreylistCmd.Flags().StringVarP(&Listname, "list", "l", "", "Greylist name")
 	debugSyncZoneCmd.Flags().StringVarP(&tapir.GlobalCF.Zone, "zone", "z", "", "Zone name")
 	debugZoneDataCmd.Flags().StringVarP(&tapir.GlobalCF.Zone, "zone", "z", "", "Zone name")
 	debugSyncZoneCmd.Flags().StringVarP(&zonefile, "file", "f", "", "Zone file")

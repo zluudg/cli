@@ -21,6 +21,10 @@ build:
 linux:  
 	/bin/sh make-version.sh $(VERSION)-$(COMMIT) $(APPDATE) $(PROG)
 	GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -o ${PROG}.linux
+
+netbsd:  
+	/bin/sh make-version.sh $(VERSION)-$(COMMIT) $(APPDATE) $(PROG)
+	GOOS=netbsd GOARCH=amd64 go build $(GOFLAGS) -o ${PROG}.netbsd
 # ----
 # VERSION:=$(shell git describe --dirty=+WiP --always)
 # VERSION:=`git describe --dirty=+WiP --always`
