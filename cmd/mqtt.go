@@ -175,6 +175,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 		var tmsg = tapir.TapirMsg{
 			SrcName:   srcname,
 			Creator:   "tapir-cli",
+			MsgType:   "intel-update",
 			ListType:  "greylist",
 			TimeStamp: time.Now(),
 		}
@@ -272,6 +273,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 				tmsg = tapir.TapirMsg{
 					SrcName:   srcname,
 					Creator:   "tapir-cli",
+					MsgType:   "intel-update",
 					ListType:  "greylist",
 					TimeStamp: time.Now(),
 				}

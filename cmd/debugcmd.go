@@ -216,7 +216,7 @@ var debugImportGreylistCmd = &cobra.Command{
 		status, buf, err := api.RequestNG(http.MethodPost, "/bootstrap", tapir.BootstrapPost{
 			Command:  "export-greylist",
 			ListName: Listname,
-		}, true)
+		}, false)
 		if err != nil {
 			fmt.Printf("Error from RequestNG: %v\n", err)
 			return
@@ -252,13 +252,35 @@ var debugImportGreylistCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Printf("%v\n", greylist)
-		fmt.Printf("Names present in greylist %s:\n", Listname)
-		out := []string{"Name|Time added|TTL|Tags"}
-		for _, n := range greylist.Names {
-			out = append(out, fmt.Sprintf("%s|%v|%v|%v", n.Name, n.TimeAdded.Format(timelayout), n.TTL, n.TagMask))
+		// fmt.Printf("%v\n", greylist)
+		fmt.Printf("Names present in greylist %s:", Listname)
+		if len(greylist.Names) == 0 {
+			fmt.Printf(" None\n")
+		} else {
+			fmt.Printf("\n")
+			out := []string{"Name|Time added|TTL|Tags"}
+			for _, n := range greylist.Names {
+				ttl := n.TTL - time.Now().Sub(n.TimeAdded).Round(time.Second)
+				out = append(out, fmt.Sprintf("%s|%v|%v|%v", n.Name, n.TimeAdded.Format(tapir.TimeLayout), ttl, n.TagMask))
+			}
+			fmt.Printf("%s\n", columnize.SimpleFormat(out))
 		}
-		fmt.Printf("%s\n", columnize.SimpleFormat(out))
+
+		fmt.Printf("ReaperData present in greylist %s:", Listname)
+		if len(greylist.ReaperData) == 0 {
+			fmt.Printf(" None\n")
+		} else {
+			fmt.Printf("\n")
+			out := []string{"Time|Count|Names"}
+			for t, d := range greylist.ReaperData {
+				var names []string
+				for n := range d {
+					names = append(names, n)
+				}
+				out = append(out, fmt.Sprintf("%s|%d|%v", t.Format(timelayout), len(d), names))
+			}
+			fmt.Printf("%s\n", columnize.SimpleFormat(out))
+		}
 	},
 }
 
