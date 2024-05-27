@@ -216,6 +216,7 @@ var debugImportGreylistCmd = &cobra.Command{
 		status, buf, err := api.RequestNG(http.MethodPost, "/bootstrap", tapir.BootstrapPost{
 			Command:  "export-greylist",
 			ListName: Listname,
+			Encoding: "gob",
 		}, false)
 		if err != nil {
 			fmt.Printf("Error from RequestNG: %v\n", err)
