@@ -47,8 +47,7 @@ var TemPingCmd = &cobra.Command{
 var DaemonApiCmd = &cobra.Command{
 	Use:   "api",
 	Short: "request a TEM api summary",
-	Long: `The daemon api queries the statusd for the provided API
-and prints that out in a (hopefully) comprehensible fashion.`,
+	Long:  `Query TEM for the provided API endpoints and print that out in a (hopefully) comprehensible fashion.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 0 {
 			log.Fatal("api must have no arguments")

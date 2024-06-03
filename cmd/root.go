@@ -52,7 +52,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.Verbose, "verbose", "v", false, "Verbose mode")
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.Debug, "debug", "d", false, "Debugging output")
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.ShowHdr, "headers", "H", false, "Show column headers")
-	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.UseTLS, "tls", "", true, "Use a TLS connection to statusd")
+	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.UseTLS, "tls", "", true, "Use a TLS connection to TEM")
 }
 
 var validate *validator.Validate
@@ -120,12 +120,10 @@ func RootInitConfig() {
 	//		log.Fatalf("Missing required attributes in config %s:\n%v\n", viper.ConfigFileUsed(), err)
 	//	}
 
-	baseurl := viper.GetString("cli." + servername + ".url") // XXX: should be "statusd" rather than "apiserver"
+	baseurl := viper.GetString("cli." + servername + ".url")
 	if tapir.GlobalCF.UseTLS {
 		baseurl = viper.GetString("cli." + servername + ".tlsurl")
 	}
-
-	// Logger = log.New(os.Stderr, Prog+": ", log.Lshortfile)
 
 	var err error
 	api = &tapir.ApiClient{

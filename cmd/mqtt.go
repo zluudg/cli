@@ -30,7 +30,7 @@ var mqttclientid string
 var mqttpub, mqttsub bool
 
 // var testMsg = tapir.TapirMsg{
-//	MsgType: "intel-update",
+//	MsgType: "observation",
 //	Added: []tapir.Domain{
 //		tapir.Domain{
 //			Name: "frobozz.com.",
@@ -138,8 +138,8 @@ and usage of using your command. For example: to quickly create a Cobra applicat
 }
 
 var mqttIntelUpdateCmd = &cobra.Command{
-	Use:   "intel-update",
-	Short: "Send intel updates in TapirMsg form to the tapir intel MQTT topic (debug tool)",
+	Use:   "observation",
+	Short: "Send observations in TapirMsg form to the tapir intel MQTT topic (debug tool)",
 	Long: `Will query for operation (add|del), domain name and tags.
 Will end the loop on the operation (or domain name) "QUIT"`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -175,7 +175,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 		var tmsg = tapir.TapirMsg{
 			SrcName:   srcname,
 			Creator:   "tapir-cli",
-			MsgType:   "intel-update",
+			MsgType:   "observation",
 			ListType:  "greylist",
 			TimeStamp: time.Now(),
 		}
@@ -273,7 +273,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 				tmsg = tapir.TapirMsg{
 					SrcName:   srcname,
 					Creator:   "tapir-cli",
-					MsgType:   "intel-update",
+					MsgType:   "observation",
 					ListType:  "greylist",
 					TimeStamp: time.Now(),
 				}
