@@ -119,9 +119,9 @@ var debugMqttStatsCmd = &cobra.Command{
 		}
 
 		var out = []string{"MQTT Topic|Msgs|Last MQTT Message|Time since last msg"}
-		for topic, count := range resp.MqttStats.MsgCounter {
-			t := resp.MqttStats.MsgTimeStamp[topic]
-			out = append(out, fmt.Sprintf("%s|%d|%s|%v\n", topic, count, t.Format(timelayout), time.Now().Sub(t)))
+		for topic, count := range resp.MqttStats.MsgCounters {
+			t := resp.MqttStats.MsgTimeStamps[topic]
+			out = append(out, fmt.Sprintf("%s|%d|%s|%v\n", topic, count, t.Format(timelayout), time.Since(t).Round(time.Second)))
 		}
 		fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	},
@@ -203,6 +203,42 @@ var debugSyncZoneCmd = &cobra.Command{
 
 var Listname string
 
+var debugGreylistStatusCmd = &cobra.Command{
+	Use:   "greylist-status",
+	Short: "Return the greylist status for all greylists",
+	Run: func(cmd *cobra.Command, args []string) {
+		status, buf, err := api.RequestNG(http.MethodPost, "/bootstrap", tapir.BootstrapPost{
+			Command: "greylist-status",
+		}, false)
+		if err != nil {
+			fmt.Printf("Error from RequestNG: %v\n", err)
+			return
+		}
+
+		if status != http.StatusOK {
+			fmt.Printf("HTTP Error: %s\n", buf)
+			return
+		}
+		var br tapir.BootstrapResponse
+		err = json.Unmarshal(buf, &br)
+		if err != nil {
+			fmt.Printf("Error decoding bootstrap response as a tapir.CommandResponse: %v. Giving up.\n", err)
+			return
+		}
+		if br.Error {
+			fmt.Printf("Bootstrap Error: %s\n", br.ErrorMsg)
+		}
+		if len(br.Msg) != 0 {
+			fmt.Printf("Bootstrap response: %s\n", br.Msg)
+		}
+		out := []string{"Topic|Uptime|Last Msg|Time since last msg"}
+		for topic, count := range br.MsgCounters {
+			out = append(out, fmt.Sprintf("%s|%v|%v|%v", topic, count, br.MsgTimeStamps[topic].Format(time.RFC3339), time.Now().Sub(br.MsgTimeStamps[topic])))
+		}
+		fmt.Printf("%s\n", columnize.SimpleFormat(out))
+	},
+}
+
 var debugImportGreylistCmd = &cobra.Command{
 	Use:   "import-greylist",
 	Short: "Import the current data for the named greylist from the TEM bootstrap server",
@@ -238,17 +274,17 @@ var debugImportGreylistCmd = &cobra.Command{
 		if err != nil {
 			// fmt.Printf("Error decoding greylist data: %v\n", err)
 			// If decoding the gob failed, perhaps we received a tapir.CommandResponse instead?
-			var cr tapir.CommandResponse
-			err = json.Unmarshal(buf, &cr)
+			var br tapir.BootstrapResponse
+			err = json.Unmarshal(buf, &br)
 			if err != nil {
 				fmt.Printf("Error decoding response either as a GOB blob or as a tapir.CommandResponse: %v. Giving up.\n", err)
 				return
 			}
-			if cr.Error {
-				fmt.Printf("Command Error: %s\n", cr.ErrorMsg)
+			if br.Error {
+				fmt.Printf("Command Error: %s\n", br.ErrorMsg)
 			}
-			if len(cr.Msg) != 0 {
-				fmt.Printf("Command response: %s\n", cr.Msg)
+			if len(br.Msg) != 0 {
+				fmt.Printf("Command response: %s\n", br.Msg)
 			}
 			return
 		}
@@ -289,7 +325,7 @@ func init() {
 	rootCmd.AddCommand(debugcmdCmd)
 	debugcmdCmd.AddCommand(debugSyncZoneCmd, debugZoneDataCmd, debugColourlistsCmd, debugGenRpzCmd)
 	debugcmdCmd.AddCommand(debugMqttStatsCmd, debugReaperStatsCmd)
-	debugcmdCmd.AddCommand(debugImportGreylistCmd)
+	debugcmdCmd.AddCommand(debugImportGreylistCmd, debugGreylistStatusCmd)
 
 	// Here you will define your flags and configuration settings.
 
