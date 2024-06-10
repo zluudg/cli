@@ -6,6 +6,7 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"crypto/ecdsa"
 	"encoding/json"
 	"net/http"
 	"path/filepath"
@@ -31,8 +32,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var mqttclientid, mqtttopic, defaulttopic, mqttgreylist string
-var mqttpub, mqttsub, mqttretain bool
+var mqttclientid, mqtttopic, defaulttopic, mqttgreylist, cfgfile string
+var mqttpub, mqttsub, mqttretain, mqttconfigclear bool
 
 var mqttCmd = &cobra.Command{
 	Use:   "mqtt",
@@ -61,6 +62,47 @@ and usage of using your command. For example: to quickly create a Cobra applicat
 		if err != nil {
 			fmt.Printf("Error from NewMqttEngine: %v\n", err)
 			os.Exit(1)
+		}
+
+		var canPub = true
+		var canSub = true
+		var signkey *ecdsa.PrivateKey
+		var valkey *ecdsa.PublicKey
+
+		switch mqtttopic {
+		case "config":
+			mqtttopic = viper.GetString("tapir.config.topic")
+			signkey, err = tapir.FetchMqttSigningKey(mqtttopic, viper.GetString("tapir.config.signingkey"))
+			if err != nil {
+				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.config.signingkey"))
+				canPub = false
+			}
+			valkey, err = tapir.FetchMqttValidatorKey(mqtttopic, viper.GetString("tapir.config.validatorkey"))
+			if err != nil {
+				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.config.validatorkey"))
+				canSub = false
+			}
+
+		case "observations":
+			mqtttopic = viper.GetString("tapir.observations.topic")
+			signkey, err = tapir.FetchMqttSigningKey(mqtttopic, viper.GetString("tapir.observations.signingkey"))
+			if err != nil {
+				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.observations.signingkey"))
+				canPub = false
+			}
+			valkey, err = tapir.FetchMqttValidatorKey(mqtttopic, viper.GetString("tapir.observations.validatorkey"))
+			if err != nil {
+				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.observations.validatorkey"))
+				canSub = false
+			}
+
+		default:
+			log.Fatalf("Invalid MQTT topic: %s", mqtttopic)
+		}
+
+		if canPub || canSub {
+			fmt.Printf("Adding topic: %s\n", mqtttopic)
+			meng.AddTopic(mqtttopic, signkey, valkey)
 		}
 
 		cmnder, outbox, inbox, err := meng.StartEngine()
@@ -128,15 +170,50 @@ var mqttTapirCmd = &cobra.Command{
 	Short: "Empty prefix command only useable via sub-commands",
 }
 
+type ConfigFoo struct {
+	GlobalConfig tapir.GlobalConfig
+}
+
 var mqttTapirConfigCmd = &cobra.Command{
 	Use:   "config",
-	Short: "Send config in TapirMsg form to the tapir config MQTT topic",
+	Short: "Send TEM global config in TapirMsg form to the tapir config MQTT topic",
+	Long: `Send TEM global config in TapirMsg form to the tapir config MQTT topic.
+	The -F option is required and specifies the file containing the global config in YAML format.
+	If -R is specified, will send a retained message, otherwise will send a normal message.
+	If -C is specified, will clear the retained config message, otherwise will send the new config.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		meng, err := tapir.NewMqttEngine(mqttclientid, tapir.TapirPub, log.Default()) // pub, no sub
 		if err != nil {
 			fmt.Printf("Error from NewMqttEngine: %v\n", err)
 			os.Exit(1)
 		}
+
+		if cfgfile == "" {
+			fmt.Println("Error: Configuration file not specified")
+			os.Exit(1)
+		}
+
+		cfgfile = filepath.Clean(cfgfile)
+		cfgData, err := os.ReadFile(cfgfile)
+		if err != nil {
+			fmt.Printf("Error reading configuration file %s: %v\n", cfgfile, err)
+			os.Exit(1)
+		}
+
+		var cf ConfigFoo
+		err = yaml.Unmarshal(cfgData, &cf)
+		if err != nil {
+			fmt.Printf("Error unmarshalling YAML data from file %s: %v\n", cfgfile, err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Global configuration loaded from %s\n", cfgfile)
+		pretty, err := yaml.Marshal(cf.GlobalConfig)
+		if err != nil {
+			fmt.Printf("Error marshalling YAML data: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Global configuration:\n%s\n", string(pretty))
 
 		mqtttopic = viper.GetString("tapir.config.topic")
 		if mqtttopic == "" {
@@ -166,18 +243,30 @@ var mqttTapirConfigCmd = &cobra.Command{
 		}
 
 		var tmsg = tapir.TapirMsg{
-			SrcName:   srcname,
-			Creator:   "tapir-cli",
-			MsgType:   "global-config",
-			TimeStamp: time.Now(),
+			SrcName:      srcname,
+			Creator:      "tapir-cli",
+			MsgType:      "global-config",
+			GlobalConfig: cf.GlobalConfig,
+			TimeStamp:    time.Now(),
 		}
-		outbox <- tapir.MqttPkg{
-			Type:   "data",
-			Topic:  mqtttopic,
-			Retain: mqttretain,
-			Data:   tmsg,
+		if mqttconfigclear {
+			tmsg.Msg = ""
+			outbox <- tapir.MqttPkg{
+				Type:   "text",
+				Topic:  mqtttopic,
+				Retain: true,
+				Msg:    "",
+			}
+		} else {
+			outbox <- tapir.MqttPkg{
+				Type:   "data",
+				Topic:  mqtttopic,
+				Retain: mqttretain,
+				Data:   tmsg,
+			}
 		}
 
+		fmt.Println("[Waiting 1000 ms to ensure message has been sent]")
 		// Here we need to hang around for a while to ensure that the message has time to be sent.
 		time.Sleep(1000 * time.Millisecond)
 		fmt.Printf("Hopefully the config message has been sent.\n")
@@ -379,8 +468,6 @@ func init() {
 	mqttTapirCmd.AddCommand(mqttTapirObservationsCmd, mqttTapirConfigCmd, mqttTapirBootstrapCmd)
 	mqttTapirBootstrapCmd.AddCommand(mqttTapirBootstrapStatusCmd)
 
-	fmt.Printf("Init: MQTT topic: %s\n", viper.GetString("mqtt.topic"))
-	// defaulttopic = viper.GetString("mqtt.topic")
 	mqttCmd.PersistentFlags().StringVarP(&mqtttopic, "topic", "t", "", "MQTT topic, default from tapir-cli config")
 
 	mqttclientid = "tapir-cli-" + uuid.New().String()
@@ -388,6 +475,8 @@ func init() {
 	mqttEngineCmd.Flags().BoolVarP(&mqttpub, "pub", "", false, "Enable pub support")
 	mqttEngineCmd.Flags().BoolVarP(&mqttsub, "sub", "", false, "Enable sub support")
 	mqttTapirConfigCmd.Flags().BoolVarP(&mqttretain, "retain", "R", false, "Publish a retained message")
+	mqttTapirConfigCmd.Flags().BoolVarP(&mqttconfigclear, "clear", "C", false, "Clear retained config message")
+	mqttTapirConfigCmd.Flags().StringVarP(&cfgfile, "cfgfile", "F", "", "Name of file containing global config to send")
 	mqttTapirBootstrapCmd.PersistentFlags().StringVarP(&mqttgreylist, "greylist", "G", "dns-tapir", "Greylist to inquire about")
 }
 
@@ -523,7 +612,7 @@ func SetupSubPrinter(inbox chan tapir.MqttPkg) {
 			select {
 			case pkg = <-inbox:
 				var out []string
-				fmt.Printf("Received TAPIR MQTT Message:\n")
+				fmt.Printf("Received TAPIR MQTT Message of type: %s\n", pkg.Data.MsgType)
 				for _, a := range pkg.Data.Added {
 					out = append(out, fmt.Sprintf("ADD: %s|%032b", a.Name, a.TagMask))
 				}
@@ -531,6 +620,12 @@ func SetupSubPrinter(inbox chan tapir.MqttPkg) {
 					out = append(out, fmt.Sprintf("DEL: %s", a.Name))
 				}
 				fmt.Println(columnize.SimpleFormat(out))
+				pretty, err := yaml.Marshal(pkg.Data)
+				if err != nil {
+					fmt.Printf("Error marshalling YAML data: %v\n", err)
+					os.Exit(1)
+				}
+				fmt.Printf("Received TAPIR MQTT Message:\n%s\n", string(pretty))
 			}
 		}
 	}()
