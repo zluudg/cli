@@ -7,11 +7,13 @@ replace github.com/dnstapir/tapir => ../tapir
 require (
 	github.com/dnstapir/tapir v0.0.0-00010101000000-000000000000
 	github.com/go-playground/validator/v10 v10.9.0
+	github.com/google/uuid v1.4.0
 	github.com/miekg/dns v1.1.57
 	github.com/ryanuber/columnize v2.1.2+incompatible
 	github.com/smhanov/dawg v0.0.0-20220118194912-66057bdbf2e3
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.18.1
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -53,5 +55,4 @@ require (
 	golang.org/x/tools v0.13.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

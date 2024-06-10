@@ -21,6 +21,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/dnstapir/tapir"
 	"github.com/miekg/dns"
 	"github.com/ryanuber/columnize"
@@ -29,8 +31,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var mqttclientid, mqttgreylist string
-var mqttpub, mqttsub bool
+var mqttclientid, mqtttopic, defaulttopic, mqttgreylist string
+var mqttpub, mqttsub, mqttretain bool
 
 var mqttCmd = &cobra.Command{
 	Use:   "mqtt",
@@ -77,9 +79,9 @@ and usage of using your command. For example: to quickly create a Cobra applicat
 			SetupSubPrinter(inbox)
 		}
 
-		srcname := viper.GetString("mqtt.tapir.srcname")
+		srcname := viper.GetString("tapir.observations.srcname")
 		if srcname == "" {
-			fmt.Printf("Error: mqtt.tapir.srcname not specified in config")
+			fmt.Printf("Error: tapir.observations.srcname not specified in config")
 			os.Exit(1)
 		}
 
@@ -121,10 +123,71 @@ and usage of using your command. For example: to quickly create a Cobra applicat
 	},
 }
 
-var mqttIntelUpdateCmd = &cobra.Command{
-	Use:   "observation",
+var mqttTapirCmd = &cobra.Command{
+	Use:   "tapir",
+	Short: "Empty prefix command only useable via sub-commands",
+}
+
+var mqttTapirConfigCmd = &cobra.Command{
+	Use:   "config",
+	Short: "Send config in TapirMsg form to the tapir config MQTT topic",
+	Run: func(cmd *cobra.Command, args []string) {
+		meng, err := tapir.NewMqttEngine(mqttclientid, tapir.TapirPub, log.Default()) // pub, no sub
+		if err != nil {
+			fmt.Printf("Error from NewMqttEngine: %v\n", err)
+			os.Exit(1)
+		}
+
+		mqtttopic = viper.GetString("tapir.config.topic")
+		if mqtttopic == "" {
+			fmt.Println("Error: tapir.config.topic not specified in config")
+			os.Exit(1)
+		}
+		fmt.Printf("Using DNS TAPIR config MQTT topic: %s\n", mqtttopic)
+		signkey, err := tapir.FetchMqttSigningKey(mqtttopic, viper.GetString("tapir.config.signingkey"))
+		if err != nil {
+			fmt.Printf("Error fetching MQTT signing key: %v", err)
+			os.Exit(1)
+		}
+		meng.AddTopic(mqtttopic, signkey, nil)
+
+		cmnder, outbox, _, err := meng.StartEngine()
+		if err != nil {
+			fmt.Printf("Error from StartEngine(): %v\n", err)
+			os.Exit(1)
+		}
+
+		SetupInterruptHandler(cmnder)
+
+		srcname := viper.GetString("tapir.config.srcname")
+		if srcname == "" {
+			fmt.Println("Error: tapir.config.srcname not specified in config")
+			os.Exit(1)
+		}
+
+		var tmsg = tapir.TapirMsg{
+			SrcName:   srcname,
+			Creator:   "tapir-cli",
+			MsgType:   "global-config",
+			TimeStamp: time.Now(),
+		}
+		outbox <- tapir.MqttPkg{
+			Type:   "data",
+			Topic:  mqtttopic,
+			Retain: mqttretain,
+			Data:   tmsg,
+		}
+
+		// Here we need to hang around for a while to ensure that the message has time to be sent.
+		time.Sleep(1000 * time.Millisecond)
+		fmt.Printf("Hopefully the config message has been sent.\n")
+	},
+}
+
+var mqttTapirObservationsCmd = &cobra.Command{
+	Use:   "observations",
 	Short: "Send observations in TapirMsg form to the tapir intel MQTT topic (debug tool)",
-	Long: `Will query for operation (add|del), domain name and tags.
+	Long: `Will query for operation (add|del|show|send|set-ttl|list-tags|quit), domain name and tags.
 Will end the loop on the operation (or domain name) "QUIT"`,
 	Run: func(cmd *cobra.Command, args []string) {
 		meng, err := tapir.NewMqttEngine(mqttclientid, tapir.TapirPub, log.Default()) // pub, no sub
@@ -133,12 +196,18 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 			os.Exit(1)
 		}
 
-		topic := viper.GetString("mqtt.topic")
-		valkey, err := tapir.FetchMqttValidatorKey(topic, viper.GetString("mqtt.validatorkey"))
-		if err != nil {
-			log.Fatalf("Error fetching MQTT validator key: %v", err)
+		mqtttopic = viper.GetString("tapir.observations.topic")
+		if mqtttopic == "" {
+			fmt.Println("Error: tapir.observations.topic not specified in config")
+			os.Exit(1)
 		}
-		meng.AddTopic(topic, valkey)
+		fmt.Printf("Using DNS TAPIR observation MQTT topic: %s\n", mqtttopic)
+
+		signkey, err := tapir.FetchMqttSigningKey(mqtttopic, viper.GetString("tapir.observations.signingkey"))
+		if err != nil {
+			log.Fatalf("Error fetching MQTT signing key: %v", err)
+		}
+		meng.AddTopic(mqtttopic, signkey, nil)
 
 		cmnder, outbox, _, err := meng.StartEngine()
 		if err != nil {
@@ -149,9 +218,9 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 
 		SetupInterruptHandler(cmnder)
 
-		srcname := viper.GetString("mqtt.tapir.srcname")
+		srcname := viper.GetString("tapir.observations.srcname")
 		if srcname == "" {
-			fmt.Printf("Error: mqtt.tapir.srcname not specified in config")
+			fmt.Println("Error: tapir.observations.srcname not specified in config")
 			os.Exit(1)
 		}
 
@@ -250,8 +319,10 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 
 			case "send":
 				outbox <- tapir.MqttPkg{
-					Type: "data",
-					Data: tmsg,
+					Type:   "data",
+					Topic:  mqtttopic,
+					Retain: false,
+					Data:   tmsg,
 				}
 
 				tmsg = tapir.TapirMsg{
@@ -271,12 +342,12 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 	},
 }
 
-var mqttBootstrapCmd = &cobra.Command{
+var mqttTapirBootstrapCmd = &cobra.Command{
 	Use:   "bootstrap",
 	Short: "MQTT Bootstrap commands",
 }
 
-var mqttBootstrapStatusCmd = &cobra.Command{
+var mqttTapirBootstrapStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Send send greylist-status request to MQTT Bootstrap Server",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -304,14 +375,20 @@ var mqttBootstrapStatusCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(mqttCmd)
-	mqttCmd.AddCommand(mqttEngineCmd, mqttIntelUpdateCmd, mqttBootstrapCmd)
-	mqttBootstrapCmd.AddCommand(mqttBootstrapStatusCmd)
+	mqttCmd.AddCommand(mqttEngineCmd, mqttTapirCmd)
+	mqttTapirCmd.AddCommand(mqttTapirObservationsCmd, mqttTapirConfigCmd, mqttTapirBootstrapCmd)
+	mqttTapirBootstrapCmd.AddCommand(mqttTapirBootstrapStatusCmd)
 
-	mqttCmd.PersistentFlags().StringVarP(&mqttclientid, "clientid", "", "",
-		"MQTT client id, must be unique")
+	fmt.Printf("Init: MQTT topic: %s\n", viper.GetString("mqtt.topic"))
+	// defaulttopic = viper.GetString("mqtt.topic")
+	mqttCmd.PersistentFlags().StringVarP(&mqtttopic, "topic", "t", "", "MQTT topic, default from tapir-cli config")
+
+	mqttclientid = "tapir-cli-" + uuid.New().String()
+	mqttCmd.PersistentFlags().StringVarP(&mqttclientid, "clientid", "", mqttclientid, "MQTT client id, default is a random string")
 	mqttEngineCmd.Flags().BoolVarP(&mqttpub, "pub", "", false, "Enable pub support")
 	mqttEngineCmd.Flags().BoolVarP(&mqttsub, "sub", "", false, "Enable sub support")
-	mqttBootstrapCmd.PersistentFlags().StringVarP(&mqttgreylist, "greylist", "G", "dns-tapir", "Greylist to inquire about")
+	mqttTapirConfigCmd.Flags().BoolVarP(&mqttretain, "retain", "R", false, "Publish a retained message")
+	mqttTapirBootstrapCmd.PersistentFlags().StringVarP(&mqttgreylist, "greylist", "G", "dns-tapir", "Greylist to inquire about")
 }
 
 func PrintBootstrapMqttStatus(name string, src *SourceConf) error {
