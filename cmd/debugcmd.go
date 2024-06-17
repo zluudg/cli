@@ -18,6 +18,8 @@ import (
 
 	//	"github.com/ryanuber/columnize"
 	"github.com/miekg/dns"
+	//"github.com/santhosh-tekuri/jsonschema/v2"
+	"github.com/invopop/jsonschema"
 	"github.com/spf13/cobra"
 )
 
@@ -239,6 +241,32 @@ var debugGreylistStatusCmd = &cobra.Command{
 	},
 }
 
+var debugGenerateSchemaCmd = &cobra.Command{
+	Use:   "generate-schema",
+	Short: "Experimental: Generate the JSON schema for the current data structures",
+	Run: func(cmd *cobra.Command, args []string) {
+
+		reflector := &jsonschema.Reflector{
+			DoNotReference: true,
+		}
+		schema := reflector.Reflect(&tapir.WBGlist{}) // WBGlist is only used as a example.
+		schemaJson, err := schema.MarshalJSON()
+		if err != nil {
+			fmt.Printf("Error marshalling schema: %v\n", err)
+			os.Exit(1)
+		}
+		var prettyJSON bytes.Buffer
+
+		// XXX: This doesn't work. It isn't necessary that the response is JSON.
+		err = json.Indent(&prettyJSON, schemaJson, "", "  ")
+		if err != nil {
+			fmt.Printf("Error indenting schema: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("%v\n", string(prettyJSON.Bytes()))
+	},
+}
+
 var debugImportGreylistCmd = &cobra.Command{
 	Use:   "import-greylist",
 	Short: "Import the current data for the named greylist from the TEM bootstrap server",
@@ -326,6 +354,7 @@ func init() {
 	debugcmdCmd.AddCommand(debugSyncZoneCmd, debugZoneDataCmd, debugColourlistsCmd, debugGenRpzCmd)
 	debugcmdCmd.AddCommand(debugMqttStatsCmd, debugReaperStatsCmd)
 	debugcmdCmd.AddCommand(debugImportGreylistCmd, debugGreylistStatusCmd)
+	debugcmdCmd.AddCommand(debugGenerateSchemaCmd)
 
 	// Here you will define your flags and configuration settings.
 
