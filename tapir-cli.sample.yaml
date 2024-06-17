@@ -1,12 +1,18 @@
-mqtt:
-   server:		mqtt.dev.dnstapir.se:8883
-#   uid:			johani
-   clientid:		johani
-   topic:		events/up/johani/frobozz
-   cacert:		/etc/dnstapir/certs/tapirCA.crt
-   clientcert:		/etc/dnstapir/certs/mqttclient.crt
-   clientkey:		/etc/dnstapir/certs/mqttclient-key.pem
-   signingkey:		/etc/dnstapir/certs/mqttsigner-key.pem
-   validatorkey:	/etc/dnstapir/certs/mqttsigner-pub.pem
-   qos:			2
+tapir:
+   mqtt:
+      server:		tls://mqtt.dev.dnstapir.se:8883
+      uid:		johani
+      cacert:		/etc/dnstapir/certs/tapirCA.crt
+      clientcert:	/etc/dnstapir/certs/mqttclient.crt
+      clientkey:	/etc/dnstapir/certs/mqttclient-key.pem
+      qos:		2
 
+   observations:
+      srcname:		dns-tapir
+      topic:		events/up/johani/frobozz
+      signingkey:	/etc/dnstapir/certs/mqttsigner-key.pem
+
+   config:
+      srcname:		dns-tapir
+      topic:		events/up/johani/config
+      signingkey:	/etc/dnstapir/certs/mqttsigner-key.pem
