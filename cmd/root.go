@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Johan Stenstam, johani@johani.org
+ * Copyright (c) 2024 DNS TAPIR
  */
 package cmd
 
@@ -30,7 +30,7 @@ type Services struct {
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "tapir-cli",
-	Short: "CLI  utility used to interact with TEM, i.e. te TAPIR Edge Manager",
+	Short: "CLI  utility used to interact with TAPIR-POP, i.e. the TAPIR Policy Processor",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -48,11 +48,11 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
-		fmt.Sprintf("config file (default is %s)", tapir.DefaultTemCfgFile))
+		fmt.Sprintf("config file (default is %s)", tapir.DefaultPopCfgFile))
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.Verbose, "verbose", "v", false, "Verbose mode")
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.Debug, "debug", "d", false, "Debugging output")
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.ShowHdr, "headers", "H", false, "Show column headers")
-	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.UseTLS, "tls", "", true, "Use a TLS connection to TEM")
+	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.UseTLS, "tls", "", true, "Use a TLS connection to TAPIR-POP")
 }
 
 var validate *validator.Validate
@@ -86,8 +86,8 @@ func RootInitConfig() {
 		switch Prog {
 		case "tapir-cli":
 			certname = "tapir-cli"
-			servername = "tem"
-			viper.SetConfigFile(tapir.DefaultTemCfgFile)
+			servername = "tapir-pop"
+			viper.SetConfigFile(tapir.DefaultPopCfgFile)
 			viper.AutomaticEnv() // read in environment variables that match
 
 			// If a config file is found, read it in.
@@ -121,8 +121,14 @@ func RootInitConfig() {
 	//	}
 
 	baseurl := viper.GetString("cli." + servername + ".url")
+	if baseurl == "" {
+		log.Fatalf("Error: missing config key: cli.%s.url", servername)
+	}
 	if tapir.GlobalCF.UseTLS {
 		baseurl = viper.GetString("cli." + servername + ".tlsurl")
+		if baseurl == "" {
+			log.Fatalf("Error: missing config key: cli.%s.tlsurl", servername)
+		}
 	}
 
 	var err error
