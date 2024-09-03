@@ -11,12 +11,13 @@ import (
 
 	"github.com/dnstapir/tapir"
 	"github.com/miekg/dns"
+	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
 )
 
 var BumpCmd = &cobra.Command{
 	Use:   "bump",
-	Short: "Instruct TEM to bump the SOA serial of the RPZ zone",
+	Short: "Instruct TAPIR-POP to bump the SOA serial of the RPZ zone",
 	Run: func(cmd *cobra.Command, args []string) {
 		resp := SendCommandCmd(tapir.CommandPost{
 			Command: "bump",
@@ -30,19 +31,45 @@ var BumpCmd = &cobra.Command{
 	},
 }
 
-var TemCmd = &cobra.Command{
-	Use:   "tem",
-	Short: "Prefix command to TEM, only usable via sub-commands",
+var PopCmd = &cobra.Command{
+	Use:   "pop",
+	Short: "Prefix command to TAPIR-POP, only usable via sub-commands",
 }
 
-var TemMqttCmd = &cobra.Command{
+var PopMqttCmd = &cobra.Command{
 	Use:   "mqtt",
-	Short: "Prefix command to TEM MQTT, only usable via sub-commands",
+	Short: "Prefix command to TAPIR-POP MQTT, only usable via sub-commands",
 }
 
-var TemStopCmd = &cobra.Command{
+var PopStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Get the status of TAPIR-POP",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp := SendCommandCmd(tapir.CommandPost{
+			Command: "status",
+		})
+		if resp.Error {
+			fmt.Printf("%s\n", resp.ErrorMsg)
+		}
+
+		fmt.Printf("%s\n", resp.Msg)
+
+		fmt.Printf("TAPIR-POP Status: %+v\n", resp.TapirFunctionStatus)
+		if len(resp.TapirFunctionStatus.ComponentStatus) != 0 {
+			tfs := resp.TapirFunctionStatus
+			fmt.Printf("TAPIR-POP Status. Reported components: %d Total errors (since last start): %d\n", len(tfs.ComponentStatus), tfs.NumFailures)
+			var out = []string{"Component|Status|Error msg|# Fails|# Warns|LastFailure|LastSuccess"}
+			for k, v := range tfs.ComponentStatus {
+				out = append(out, fmt.Sprintf("%s|%s|%s|%d|%d|%v|%v", k, v.Status, v.ErrorMsg, v.NumFails, v.NumWarns, v.LastFail.Format(tapir.TimeLayout), v.LastSuccess.Format(tapir.TimeLayout)))
+			}
+			fmt.Printf("%s\n", columnize.SimpleFormat(out))
+		}
+	},
+}
+
+var PopStopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Instruct TEM to stop",
+	Short: "Instruct TAPIR-POP to stop",
 	Run: func(cmd *cobra.Command, args []string) {
 		resp := SendCommandCmd(tapir.CommandPost{
 			Command: "stop",
@@ -55,9 +82,9 @@ var TemStopCmd = &cobra.Command{
 	},
 }
 
-var TemMqttStartCmd = &cobra.Command{
+var PopMqttStartCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Instruct TEM MQTT Engine to start",
+	Short: "Instruct TAPIR-POP MQTT Engine to start",
 	Run: func(cmd *cobra.Command, args []string) {
 		resp := SendCommandCmd(tapir.CommandPost{
 			Command: "mqtt-start",
@@ -70,9 +97,9 @@ var TemMqttStartCmd = &cobra.Command{
 	},
 }
 
-var TemMqttStopCmd = &cobra.Command{
+var PopMqttStopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Instruct TEM MQTT Engine to stop",
+	Short: "Instruct TAPIR-POP MQTT Engine to stop",
 	Run: func(cmd *cobra.Command, args []string) {
 		resp := SendCommandCmd(tapir.CommandPost{
 			Command: "mqtt-stop",
@@ -85,9 +112,9 @@ var TemMqttStopCmd = &cobra.Command{
 	},
 }
 
-var TemMqttRestartCmd = &cobra.Command{
+var PopMqttRestartCmd = &cobra.Command{
 	Use:   "restart",
-	Short: "Instruct TEM MQTT Engine to restart",
+	Short: "Instruct TAPIR-POP MQTT Engine to restart",
 	Run: func(cmd *cobra.Command, args []string) {
 		resp := SendCommandCmd(tapir.CommandPost{
 			Command: "mqtt-restart",
@@ -101,9 +128,9 @@ var TemMqttRestartCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(BumpCmd, TemCmd)
-	TemCmd.AddCommand(TemStopCmd, TemMqttCmd)
-	TemMqttCmd.AddCommand(TemMqttStartCmd, TemMqttStopCmd, TemMqttRestartCmd)
+	rootCmd.AddCommand(BumpCmd, PopCmd)
+	PopCmd.AddCommand(PopStatusCmd, PopStopCmd, PopMqttCmd)
+	PopMqttCmd.AddCommand(PopMqttStartCmd, PopMqttStopCmd, PopMqttRestartCmd)
 
 	BumpCmd.Flags().StringVarP(&tapir.GlobalCF.Zone, "zone", "z", "", "Zone name")
 }

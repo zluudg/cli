@@ -19,9 +19,9 @@ const timelayout = "2006-01-02 15:04:05"
 
 var ServerName string = "PLACEHOLDER"
 
-var TemPingCmd = &cobra.Command{
+var PopPingCmd = &cobra.Command{
 	Use:   "ping",
-	Short: "Send an API ping request and present the response",
+	Short: "Send an API ping request to TAPIR-POP and present the response",
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 0 {
 			log.Fatal("ping must have no arguments")
@@ -46,8 +46,8 @@ var TemPingCmd = &cobra.Command{
 
 var DaemonApiCmd = &cobra.Command{
 	Use:   "api",
-	Short: "request a TEM api summary",
-	Long:  `Query TEM for the provided API endpoints and print that out in a (hopefully) comprehensible fashion.`,
+	Short: "request a TAPIR-POP api summary",
+	Long:  `Query TAPIR-POP for the provided API endpoints and print that out in a (hopefully) comprehensible fashion.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 0 {
 			log.Fatal("api must have no arguments")
@@ -58,8 +58,8 @@ var DaemonApiCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(DaemonApiCmd)
-	TemCmd.AddCommand(TemPingCmd)
+	PopCmd.AddCommand(PopPingCmd)
 
-	TemPingCmd.Flags().IntVarP(&tapir.GlobalCF.PingCount, "count", "c", 0, "#pings to send")
-	TemPingCmd.Flags().BoolVarP(&newapi, "newapi", "n", false, "use new api client")
+	PopPingCmd.Flags().IntVarP(&tapir.GlobalCF.PingCount, "count", "c", 0, "#pings to send")
+	PopPingCmd.Flags().BoolVarP(&newapi, "newapi", "n", false, "use new api client")
 }

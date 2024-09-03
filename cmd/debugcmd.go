@@ -158,6 +158,26 @@ var debugReaperStatsCmd = &cobra.Command{
 	},
 }
 
+var popcomponent, popstatus string
+
+var debugUpdatePopStatusCmd = &cobra.Command{
+	Use:   "update-pop-status",
+	Short: "Update the status of a TAPIR-POP component, to trigger a status update over MQTT",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp := SendDebugCmd(tapir.DebugPost{
+			Command:   "send-status",
+			Component: popcomponent,
+			Status:    popstatus,
+		})
+		if resp.Error {
+			fmt.Printf("%s\n", resp.ErrorMsg)
+		}
+		if resp.Msg != "" {
+			fmt.Printf("%s\n", resp.Msg)
+		}
+	},
+}
+
 var zonefile string
 
 var debugSyncZoneCmd = &cobra.Command{
@@ -224,7 +244,7 @@ var debugGreylistStatusCmd = &cobra.Command{
 		var br tapir.BootstrapResponse
 		err = json.Unmarshal(buf, &br)
 		if err != nil {
-			fmt.Printf("Error decoding bootstrap response as a tapir.CommandResponse: %v. Giving up.\n", err)
+			fmt.Printf("Error decoding bootstrap response as a tapir.BootstrapResponse: %v. Giving up.\n", err)
 			return
 		}
 		if br.Error {
@@ -233,10 +253,17 @@ var debugGreylistStatusCmd = &cobra.Command{
 		if len(br.Msg) != 0 {
 			fmt.Printf("Bootstrap response: %s\n", br.Msg)
 		}
-		out := []string{"Topic|Uptime|Last Msg|Time since last msg"}
-		for topic, count := range br.MsgCounters {
-			out = append(out, fmt.Sprintf("%s|%v|%v|%v", topic, count, br.MsgTimeStamps[topic].Format(time.RFC3339), time.Now().Sub(br.MsgTimeStamps[topic])))
+		out := []string{"Server|Uptime|Topic|Last Msg|Time since last msg"}
+
+		// for topic, count := range br.MsgCounters {
+		//		out = append(out, fmt.Sprintf("%s|%v|%v|%v", topic, count, br.MsgTimeStamps[topic].Format(time.RFC3339), time.Now().Sub(br.MsgTimeStamps[topic])))
+		// }
+
+		for topic, topicdata := range br.TopicData {
+			// out = append(out, fmt.Sprintf("%s|%v|%s|%s|%s|%d|%s|%d|%s", server, uptime, name, src.Name, topic, topicdata.PubMsgs, topicdata.LatestPub.Format(time.RFC3339), topicdata.SubMsgs, topicdata.LatestSub.Format(time.RFC3339)))
+			out = append(out, fmt.Sprintf("%s|%d|%s|%d|%s", topic, topicdata.PubMsgs, topicdata.LatestPub.Format(time.RFC3339), topicdata.SubMsgs, topicdata.LatestSub.Format(time.RFC3339)))
 		}
+
 		fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	},
 }
@@ -354,16 +381,11 @@ func init() {
 	debugcmdCmd.AddCommand(debugSyncZoneCmd, debugZoneDataCmd, debugColourlistsCmd, debugGenRpzCmd)
 	debugcmdCmd.AddCommand(debugMqttStatsCmd, debugReaperStatsCmd)
 	debugcmdCmd.AddCommand(debugImportGreylistCmd, debugGreylistStatusCmd)
-	debugcmdCmd.AddCommand(debugGenerateSchemaCmd)
+	debugcmdCmd.AddCommand(debugGenerateSchemaCmd, debugUpdatePopStatusCmd)
 
-	// Here you will define your flags and configuration settings.
+	debugUpdatePopStatusCmd.Flags().StringVarP(&popcomponent, "component", "c", "", "Component name")
+	debugUpdatePopStatusCmd.Flags().StringVarP(&popstatus, "status", "s", "", "Component status (ok, warn, fail)")
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// debugcmdCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
 	debugImportGreylistCmd.Flags().StringVarP(&Listname, "list", "l", "", "Greylist name")
 	debugSyncZoneCmd.Flags().StringVarP(&tapir.GlobalCF.Zone, "zone", "z", "", "Zone name")
 	debugZoneDataCmd.Flags().StringVarP(&tapir.GlobalCF.Zone, "zone", "z", "", "Zone name")
