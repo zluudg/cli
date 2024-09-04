@@ -45,9 +45,9 @@ var mqttCmd = &cobra.Command{
 
 var mqttEngineCmd = &cobra.Command{
 	Use:   "engine",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example: to quickly create a Cobra application.`,
+	Short: "Start an MQTT engine that can publish and subscribe to topics",
+	Long: `Start an MQTT engine that can publish and subscribe to topics.
+The engine can be configured to publish to and subscribe from the tapir config, observations and status topics.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var wg sync.WaitGroup
 
@@ -194,7 +194,7 @@ and usage of using your command. For example: to quickly create a Cobra applicat
 
 var mqttTapirCmd = &cobra.Command{
 	Use:   "tapir",
-	Short: "Empty prefix command only useable via sub-commands",
+	Short: "Prefix command only usable via sub-commands",
 }
 
 type ConfigFoo struct {
@@ -316,7 +316,7 @@ var mqttTapirConfigCmd = &cobra.Command{
 
 var mqttTapirObservationsCmd = &cobra.Command{
 	Use:   "observations",
-	Short: "Send observations in TapirMsg form to the tapir intel MQTT topic (debug tool)",
+	Short: "Interactively create and send observations to the tapir intel MQTT topic (debug tool)",
 	Long: `Will query for operation (add|del|show|send|set-ttl|list-tags|quit), domain name and tags.
 Will end the loop on the operation (or domain name) "QUIT"`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -491,7 +491,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 
 var mqttTapirStatusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Send status updates to the tapir intel MQTT topic (debug tool)",
+	Short: "Interactively create and send status updates to the tapir intel MQTT topic (debug tool)",
 	Long: `Will query for operation (add|del|show|send|set-ttl|list-tags|quit), component name and status.
 Will end the loop on the operation (or component name) "QUIT"`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -691,7 +691,7 @@ var mqttTapirBootstrapStatusCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(mqttCmd)
+	debugCmd.AddCommand(mqttCmd)
 	mqttCmd.AddCommand(mqttEngineCmd, mqttTapirCmd)
 	mqttTapirCmd.AddCommand(mqttTapirObservationsCmd, mqttTapirConfigCmd, mqttTapirStatusCmd, mqttTapirBootstrapCmd)
 	mqttTapirBootstrapCmd.AddCommand(mqttTapirBootstrapStatusCmd)

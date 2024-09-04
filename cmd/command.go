@@ -33,12 +33,12 @@ var BumpCmd = &cobra.Command{
 
 var PopCmd = &cobra.Command{
 	Use:   "pop",
-	Short: "Prefix command to TAPIR-POP, only usable via sub-commands",
+	Short: "Prefix command, only usable via sub-commands",
 }
 
 var PopMqttCmd = &cobra.Command{
 	Use:   "mqtt",
-	Short: "Prefix command to TAPIR-POP MQTT, only usable via sub-commands",
+	Short: "Prefix command, only usable via sub-commands",
 }
 
 var PopStatusCmd = &cobra.Command{

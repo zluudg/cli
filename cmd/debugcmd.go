@@ -23,9 +23,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var debugcmdCmd = &cobra.Command{
+var debugCmd = &cobra.Command{
 	Use:   "debug",
-	Short: "A brief description of your command",
+	Short: "Prefix command to various debug tools; do not use in production",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("debug called")
 
@@ -377,11 +377,11 @@ var debugImportGreylistCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(debugcmdCmd)
-	debugcmdCmd.AddCommand(debugSyncZoneCmd, debugZoneDataCmd, debugColourlistsCmd, debugGenRpzCmd)
-	debugcmdCmd.AddCommand(debugMqttStatsCmd, debugReaperStatsCmd)
-	debugcmdCmd.AddCommand(debugImportGreylistCmd, debugGreylistStatusCmd)
-	debugcmdCmd.AddCommand(debugGenerateSchemaCmd, debugUpdatePopStatusCmd)
+	rootCmd.AddCommand(debugCmd)
+	debugCmd.AddCommand(debugSyncZoneCmd, debugZoneDataCmd, debugColourlistsCmd, debugGenRpzCmd)
+	debugCmd.AddCommand(debugMqttStatsCmd, debugReaperStatsCmd)
+	debugCmd.AddCommand(debugImportGreylistCmd, debugGreylistStatusCmd)
+	debugCmd.AddCommand(debugGenerateSchemaCmd, debugUpdatePopStatusCmd)
 
 	debugUpdatePopStatusCmd.Flags().StringVarP(&popcomponent, "component", "c", "", "Component name")
 	debugUpdatePopStatusCmd.Flags().StringVarP(&popstatus, "status", "s", "", "Component status (ok, warn, fail)")

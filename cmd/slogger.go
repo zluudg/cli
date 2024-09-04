@@ -19,11 +19,16 @@ import (
 
 var SloggerCmd = &cobra.Command{
 	Use:   "slogger",
-	Short: "Prefix command to TAPIR-Slogger, only usable via sub-commands",
+	Short: "Prefix command to TAPIR-Slogger, only usable in TAPIR Core, not in TAPIR Edge",
 }
 
 var SloggerPopCmd = &cobra.Command{
 	Use:   "pop",
+	Short: "Prefix command, only usable via sub-commands",
+}
+
+var SloggerEdmCmd = &cobra.Command{
+	Use:   "edm",
 	Short: "Prefix command, only usable via sub-commands",
 }
 
@@ -52,17 +57,58 @@ var SloggerPopStatusCmd = &cobra.Command{
 			showfails = " (only fails)"
 		}
 
+		var out []string
 		for functionid, ps := range resp.PopStatus {
 			fmt.Printf("Status for TAPIR-POP%s: %s\n", showfails, functionid)
-			var out = []string{"Component|Status|Error msg|NumFailures|LastFailure|LastSuccess"}
+			out = []string{"Component|Status|Error msg|NumFailures|LastFailure|LastSuccess"}
 			for comp, v := range ps.ComponentStatus {
 				if !onlyfails || v.Status == "failure" {
 					out = append(out, fmt.Sprintf("%s|%s|%s|%d|%s|%s", comp, v.Status, v.ErrorMsg, v.NumFails,
 						v.LastFail.Format(tapir.TimeLayout), v.LastSuccess.Format(tapir.TimeLayout)))
 				}
 			}
-			fmt.Printf("%s\n", columnize.SimpleFormat(out))
 		}
+
+		fmt.Printf("%s\n", columnize.SimpleFormat(out))
+	},
+}
+
+var SloggerEdmStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Get the TAPIR-EDM status report from TAPIR-Slogger",
+	Run: func(cmd *cobra.Command, args []string) {
+		resp := SendSloggerCommand(tapir.SloggerCmdPost{
+			Command: "status",
+		})
+		if resp.Error {
+			fmt.Printf("%s\n", resp.ErrorMsg)
+		}
+
+		fmt.Printf("%s\n", resp.Msg)
+
+		if len(resp.EdmStatus) == 0 {
+			fmt.Printf("No Status reports from any TAPIR-EDM received\n")
+			os.Exit(0)
+		}
+
+		showfails := ""
+		if onlyfails {
+			showfails = " (only fails)"
+		}
+
+		var out []string
+		for functionid, ps := range resp.EdmStatus {
+			fmt.Printf("Status for TAPIR-EDM%s: %s\n", showfails, functionid)
+			out = []string{"Component|Status|Error msg|NumFailures|LastFailure|LastSuccess"}
+			for comp, v := range ps.ComponentStatus {
+				if !onlyfails || v.Status == "failure" {
+					out = append(out, fmt.Sprintf("%s|%s|%s|%d|%s|%s", comp, v.Status, v.ErrorMsg, v.NumFails,
+						v.LastFail.Format(tapir.TimeLayout), v.LastSuccess.Format(tapir.TimeLayout)))
+				}
+			}
+		}
+
+		fmt.Printf("%s\n", columnize.SimpleFormat(out))
 	},
 }
 
@@ -98,11 +144,13 @@ var SloggerPingCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(SloggerCmd)
-	SloggerCmd.AddCommand(SloggerPopCmd, SloggerPingCmd)
+	SloggerCmd.AddCommand(SloggerPopCmd, SloggerPingCmd, SloggerEdmCmd)
 	SloggerPopCmd.AddCommand(SloggerPopStatusCmd)
+	SloggerEdmCmd.AddCommand(SloggerEdmStatusCmd)
 
-	SloggerPopStatusCmd.Flags().BoolVarP(&tapir.GlobalCF.ShowHdr, "headers", "H", false, "Show column headers")
+	SloggerCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.ShowHdr, "headers", "H", false, "Show column headers")
 	SloggerPopStatusCmd.Flags().BoolVarP(&onlyfails, "onlyfails", "f", false, "Show only components that currently fail")
+	SloggerEdmStatusCmd.Flags().BoolVarP(&onlyfails, "onlyfails", "f", false, "Show only components that currently fail")
 }
 
 func SloggerApi() (*tapir.ApiClient, error) {
@@ -141,9 +189,6 @@ func SloggerApi() (*tapir.ApiClient, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Error: Could not set up TLS: %v", err)
 		}
-		// Must set this in the lab environment, as we don't know what addresses
-		// put in the server cert IP SANs. Alternative would be to add a custom
-		// VerifyConnection or VerifyPerrCertificate function in the TLS config?
 		tlsConfig.InsecureSkipVerify = true
 		err = api.SetupTLS(tlsConfig)
 	} else {
