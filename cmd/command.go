@@ -54,7 +54,6 @@ var PopStatusCmd = &cobra.Command{
 
 		fmt.Printf("%s\n", resp.Msg)
 
-		fmt.Printf("TAPIR-POP Status: %+v\n", resp.TapirFunctionStatus)
 		if len(resp.TapirFunctionStatus.ComponentStatus) != 0 {
 			tfs := resp.TapirFunctionStatus
 			fmt.Printf("TAPIR-POP Status. Reported components: %d Total errors (since last start): %d\n", len(tfs.ComponentStatus), tfs.NumFailures)
