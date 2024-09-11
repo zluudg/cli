@@ -129,7 +129,7 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 		if canPub || canSub {
 			fmt.Printf("Adding topic: %s\n", mqtttopic)
 			// meng.AddTopic(mqtttopic, signkey, valkey)
-			meng.PubSubToTopic(mqtttopic, signkey, valkey, nil)
+			meng.PubSubToTopic(mqtttopic, signkey, valkey, nil, "struct") // XXX: Brr. kludge.
 		}
 
 		cmnder, outbox, inbox, err := meng.StartEngine()
@@ -267,7 +267,7 @@ var mqttTapirConfigCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		// meng.AddTopic(mqtttopic, signkey, nil)
-		meng.PubSubToTopic(mqtttopic, signkey, nil, nil)
+		meng.PubSubToTopic(mqtttopic, signkey, nil, nil, "struct") // XXX: Brr. kludge.
 
 		cmnder, outbox, _, err := meng.StartEngine()
 		if err != nil {
@@ -351,7 +351,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 			log.Fatalf("Error fetching MQTT signing key: %v", err)
 		}
 		// meng.AddTopic(mqtttopic, signkey, nil)
-		meng.PubSubToTopic(mqtttopic, signkey, nil, nil)
+		meng.PubSubToTopic(mqtttopic, signkey, nil, nil, "struct") // XXX: Brr. kludge.
 
 		cmnder, outbox, _, err := meng.StartEngine()
 		if err != nil {
@@ -526,7 +526,7 @@ Will end the loop on the operation (or component name) "QUIT"`,
 			log.Fatalf("Error fetching MQTT signing key: %v", err)
 		}
 		// meng.AddTopic(mqtttopic, signkey, nil)
-		meng.PubSubToTopic(mqtttopic, signkey, nil, nil)
+		meng.PubSubToTopic(mqtttopic, signkey, nil, nil, "struct") // XXX: Brr. kludge.
 
 		cmnder, outbox, _, err := meng.StartEngine()
 		if err != nil {
