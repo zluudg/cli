@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"path/filepath"
+	"regexp"
 
 	//	"encoding/json"
 	"fmt"
@@ -82,6 +83,8 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 		var signkey *ecdsa.PrivateKey
 		var valkey *ecdsa.PublicKey
 
+		var validate bool
+
 		switch mqtttopic {
 		case "config":
 			mqtttopic = viper.GetString("tapir.config.topic")
@@ -94,6 +97,8 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 			if err != nil {
 				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.config.validatorkey"))
 				canSub = false
+			} else {
+				validate = true
 			}
 
 		case "observations":
@@ -107,6 +112,8 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 			if err != nil {
 				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.observations.validatorkey"))
 				canSub = false
+			} else {
+				validate = true
 			}
 
 		case "status":
@@ -120,19 +127,44 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 			if err != nil {
 				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.status.validatorkey"))
 				canSub = false
+			} else {
+				validate = true
 			}
+
+		case "keyupload":
+			mqtttopic = viper.GetString("tapir.keyupload.topic")
+			validate = false
+			// signkey, err = tapir.FetchMqttSigningKey(mqtttopic, viper.GetString("tapir.status.signingkey"))
+			// if err != nil {
+			//     fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.status.signingkey"))
+			//	   canPub = false
+			// }
+			// valkey, err = tapir.FetchMqttValidatorKey(mqtttopic, viper.GetString("tapir.status.validatorkey"))
+			// if err != nil {
+			//     fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.status.validatorkey"))
+			//	   canSub = false
+			// }
 
 		default:
 			log.Fatalf("Invalid MQTT topic: %s (must be config or observations)", mqtttopic)
 		}
 
-		if canPub || canSub {
-			fmt.Printf("Adding topic: %s\n", mqtttopic)
+		if canPub {
+			fmt.Printf("Adding pub topic: %s\n", mqtttopic)
 			// meng.AddTopic(mqtttopic, signkey, valkey)
-			meng.PubSubToTopic(mqtttopic, signkey, valkey, nil, "struct") // XXX: Brr. kludge.
+			meng.PubToTopic(mqtttopic, signkey, "struct", true) // XXX: Brr. kludge.
 		}
 
-		cmnder, outbox, inbox, err := meng.StartEngine()
+		var subch chan tapir.MqttPkgIn
+
+		if canSub {
+			fmt.Printf("Adding sub topic: %s\n", mqtttopic)
+			subch = make(chan tapir.MqttPkgIn, 10)
+			meng.SubToTopic(mqtttopic, valkey, subch, "struct", validate) // XXX: Brr. kludge.
+		}
+
+		// cmnder, outbox, inbox, err := meng.StartEngine()
+		cmnder, outbox, _, err := meng.StartEngine()
 		if err != nil {
 			log.Fatalf("Error from StartEngine(): %v", err)
 		}
@@ -145,7 +177,8 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 
 		if mqttsub {
 			wg.Add(1)
-			SetupSubPrinter(inbox)
+			// SetupSubPrinter(inbox)
+			SetupSubPrinter(subch)
 		}
 
 		srcname := viper.GetString("tapir.observations.srcname")
@@ -173,7 +206,7 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 				}
 
 				buf.Reset()
-				outbox <- tapir.MqttPkg{
+				outbox <- tapir.MqttPkgOut{
 					Type: "data",
 					Data: tapir.TapirMsg{
 						Msg:       msg,
@@ -266,8 +299,7 @@ var mqttTapirConfigCmd = &cobra.Command{
 			fmt.Printf("Error fetching MQTT signing key: %v", err)
 			os.Exit(1)
 		}
-		// meng.AddTopic(mqtttopic, signkey, nil)
-		meng.PubSubToTopic(mqtttopic, signkey, nil, nil, "struct") // XXX: Brr. kludge.
+		meng.PubToTopic(mqtttopic, signkey, "struct", false) // XXX: Brr. kludge.
 
 		cmnder, outbox, _, err := meng.StartEngine()
 		if err != nil {
@@ -292,14 +324,14 @@ var mqttTapirConfigCmd = &cobra.Command{
 		}
 		if mqttconfigclear {
 			tmsg.Msg = ""
-			outbox <- tapir.MqttPkg{
+			outbox <- tapir.MqttPkgOut{
 				Type:   "text",
 				Topic:  mqtttopic,
 				Retain: true,
 				Msg:    "",
 			}
 		} else {
-			outbox <- tapir.MqttPkg{
+			outbox <- tapir.MqttPkgOut{
 				Type:   "data",
 				Topic:  mqtttopic,
 				Retain: mqttretain,
@@ -351,7 +383,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 			log.Fatalf("Error fetching MQTT signing key: %v", err)
 		}
 		// meng.AddTopic(mqtttopic, signkey, nil)
-		meng.PubSubToTopic(mqtttopic, signkey, nil, nil, "struct") // XXX: Brr. kludge.
+		meng.PubToTopic(mqtttopic, signkey, "struct", false) // XXX: Brr. kludge.
 
 		cmnder, outbox, _, err := meng.StartEngine()
 		if err != nil {
@@ -465,7 +497,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 				if tapir.GlobalCF.Verbose {
 					fmt.Printf("Sending TAPIR-POP observation message to topic %s\n", mqtttopic)
 				}
-				outbox <- tapir.MqttPkg{
+				outbox <- tapir.MqttPkgOut{
 					Type:   "data",
 					Topic:  mqtttopic,
 					Retain: false,
@@ -525,8 +557,8 @@ Will end the loop on the operation (or component name) "QUIT"`,
 		if err != nil {
 			log.Fatalf("Error fetching MQTT signing key: %v", err)
 		}
-		// meng.AddTopic(mqtttopic, signkey, nil)
-		meng.PubSubToTopic(mqtttopic, signkey, nil, nil, "struct") // XXX: Brr. kludge.
+
+		meng.PubToTopic(mqtttopic, signkey, "struct", true) // XXX: Brr. kludge.
 
 		cmnder, outbox, _, err := meng.StartEngine()
 		if err != nil {
@@ -537,19 +569,13 @@ Will end the loop on the operation (or component name) "QUIT"`,
 
 		SetupInterruptHandler(cmnder)
 
-		//		srcname := viper.GetString("tapir.status.srcname")
-		//		if srcname == "" {
-		//			fmt.Println("Error: tapir.status.srcname not specified in config")
-		//			os.Exit(1)
-		//		}
-
 		var op, cname, status string
-		var tmsg = tapir.TapirMsg{
-			SrcName:   "status",
-			Creator:   "tapir-cli",
-			MsgType:   "status",
-			TimeStamp: time.Now(),
-		}
+		//		var tmsg = tapir.TapirMsg{
+		//			SrcName:   "status",
+		//			Creator:   "tapir-cli",
+		//			MsgType:   "status",
+		//			TimeStamp: time.Now(),
+		//		}
 
 		var ops = []string{"add", "del", "show", "send", "set-ttl", "list-tags", "quit"}
 		fmt.Printf("Defined operations are: %v\n", ops)
@@ -636,19 +662,18 @@ Will end the loop on the operation (or component name) "QUIT"`,
 				if tapir.GlobalCF.Verbose {
 					fmt.Printf("Sending TAPIR-POP status message to topic %s\n", mqtttopic)
 				}
-				tmsg.TapirFunctionStatus = tfs
-				outbox <- tapir.MqttPkg{
-					Type:   "data",
-					Topic:  mqtttopic,
-					Retain: false,
-					Data:   tmsg,
+				//	tmsg.TapirFunctionStatus = tfs
+				outbox <- tapir.MqttPkgOut{
+					Type:    "raw",
+					Topic:   mqtttopic,
+					RawData: tfs,
 				}
 
-				tmsg = tapir.TapirMsg{
-					Creator:   "tapir-cli",
-					MsgType:   "status",
-					TimeStamp: time.Now(),
-				}
+				//				tmsg = tapir.TapirMsg{
+				//					Creator:   "tapir-cli",
+				//					MsgType:   "status",
+				//					TimeStamp: time.Now(),
+				//				}
 
 			}
 		}
@@ -840,28 +865,82 @@ func ParseSources() (map[string]SourceConf, error) {
 	return srcs, nil
 }
 
-func SetupSubPrinter(inbox chan tapir.MqttPkg) {
+// func SetupSubPrinter(inbox chan tapir.MqttPkg) {
+func SetupSubPrinter(inbox chan tapir.MqttPkgIn) {
 	go func() {
-		var pkg tapir.MqttPkg
-		for {
-			select {
-			case pkg = <-inbox:
-				var out []string
-				fmt.Printf("Received TAPIR MQTT Message of type: %s\n", pkg.Data.MsgType)
-				for _, a := range pkg.Data.Added {
-					out = append(out, fmt.Sprintf("ADD: %s|%032b", a.Name, a.TagMask))
+		for pkg := range inbox {
+
+			fmt.Printf("SetupSubPrinter: Received TAPIR MQTT Message on topic '%s'\n", pkg.Topic)
+
+			switch {
+			case regexp.MustCompile(`^events/up/[^/]+/observations$`).MatchString(pkg.Topic),
+				regexp.MustCompile(`^events/down/[^/]+/general$`).MatchString(pkg.Topic):
+				parts := strings.Split(pkg.Topic, "/")
+				if len(parts) == 4 {
+					edgeId := parts[2]
+					edgeComponent := parts[3]
+					_ = edgeId        // Avoid unused variable error
+					_ = edgeComponent // Avoid unused variable error
+
+					var tm tapir.TapirMsg
+					err := json.Unmarshal(pkg.Payload, &tm)
+					if err != nil {
+						fmt.Printf("MQTT: failed to decode json: %v", err)
+						continue
+					}
+					fmt.Printf("Received TAPIR Observation Message on topic %s\n", pkg.Topic)
+					var out []string
+					for _, a := range tm.Added {
+						out = append(out, fmt.Sprintf("ADD: %s|%032b", a.Name, a.TagMask))
+					}
+					for _, a := range tm.Removed {
+						out = append(out, fmt.Sprintf("DEL: %s", a.Name))
+					}
+					fmt.Println(columnize.SimpleFormat(out))
+				} else {
+					fmt.Printf("Received TAPIR MQTT Message on unknown topic %s\n", pkg.Topic)
 				}
-				for _, a := range pkg.Data.Removed {
-					out = append(out, fmt.Sprintf("DEL: %s", a.Name))
-				}
-				fmt.Println(columnize.SimpleFormat(out))
-				pretty, err := yaml.Marshal(pkg.Data)
+
+			case pkg.Topic == "status/up/axfr/tapir-pop": // payload is a tapir.TapirFunctionStatus
+				var tfs tapir.TapirFunctionStatus
+				err := json.Unmarshal(pkg.Payload, &tfs)
 				if err != nil {
-					fmt.Printf("Error marshalling YAML data: %v\n", err)
-					os.Exit(1)
+					fmt.Printf("MQTT: failed to decode json: %v", err)
 				}
-				fmt.Printf("Received TAPIR MQTT Message:\n%s\n", string(pretty))
+				fmt.Printf("Received TAPIR MQTT Message of type: %s\n", tfs.FunctionID)
+				for _, comp := range tfs.ComponentStatus {
+					switch comp.Status {
+					case "fail":
+						fmt.Printf("TAPIR-POP %s Component: %s, Status: %s, Message: %s, Time of failure: %s\n",
+							tfs.FunctionID, comp.Component, comp.Status, comp.Msg, comp.LastFail.Format(time.RFC3339))
+					case "warn":
+						fmt.Printf("TAPIR-POP %s: Component: %s, Status: %s, Message: %s, Time of warning: %s\n",
+							tfs.FunctionID, comp.Component, comp.Status, comp.Msg, comp.LastWarn.Format(time.RFC3339))
+					case "success":
+						fmt.Printf("TAPIR-POP %s Component: %s, Status: %s, Message: %s, Time of success: %s\n",
+							tfs.FunctionID, comp.Component, comp.Status, comp.Msg, comp.LastSuccess.Format(time.RFC3339))
+					}
+				}
 			}
+
+			// case tapir.MqttPkgIn:
+			// 	p := pkg.(tapir.MqttPkgIn)
+			// 	var out []string
+			// 	fmt.Printf("Received TAPIR MQTT Message of type: %s\n", p.Data.MsgType)
+			// 	for _, a := range p.Data.Added {
+			// 		out = append(out, fmt.Sprintf("ADD: %s|%032b", a.Name, a.TagMask))
+			// 	}
+			// 	for _, a := range p.Data.Removed {
+			// 		out = append(out, fmt.Sprintf("DEL: %s", a.Name))
+			// 	}
+			// 	fmt.Println(columnize.SimpleFormat(out))
+			// 	pretty, err := yaml.Marshal(p.Data)
+			// 	if err != nil {
+			// 		fmt.Printf("Error marshalling YAML data: %v\n", err)
+			// 		os.Exit(1)
+			// 	}
+			// 	fmt.Printf("Received TAPIR MQTT Message:\n%s\n", string(pretty))
+			// }
 		}
 	}()
 }
