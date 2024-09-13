@@ -52,14 +52,6 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 	Run: func(cmd *cobra.Command, args []string) {
 		var wg sync.WaitGroup
 
-		var pubsub uint8
-		if mqttpub {
-			pubsub = pubsub | tapir.TapirPub
-		}
-		if mqttsub {
-			pubsub = pubsub | tapir.TapirSub
-		}
-
 		var statusch = make(chan tapir.ComponentStatusUpdate, 10)
 
 		// If any status updates arrive, print them out
@@ -68,6 +60,20 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 				fmt.Printf("Status update: %+v\n", status)
 			}
 		}()
+
+		certCN, _, _, err := tapir.FetchTapirClientCert(log.Default(), statusch)
+		if err != nil {
+			fmt.Printf("Error fetching client certificate: %v", err)
+			os.Exit(1)
+		}
+
+		var pubsub uint8
+		if mqttpub {
+			pubsub = pubsub | tapir.TapirPub
+		}
+		if mqttsub {
+			pubsub = pubsub | tapir.TapirSub
+		}
 
 		meng, err := tapir.NewMqttEngine("engine", mqttclientid, pubsub, statusch, log.Default())
 		if err != nil {
@@ -84,7 +90,11 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 
 		switch mqtttopic {
 		case "config":
-			mqtttopic = viper.GetString("tapir.config.topic")
+			mqtttopic, err = tapir.MqttTopic(certCN, "tapir.config.topic")
+			if err != nil {
+				fmt.Printf("Error getting MQTT topic: %v\n", err)
+				os.Exit(1)
+			}
 			signkey, err = tapir.FetchMqttSigningKey(mqtttopic, viper.GetString("tapir.config.signingkey"))
 			if err != nil {
 				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.config.signingkey"))
@@ -101,7 +111,11 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 			}
 
 		case "observations":
-			mqtttopic = viper.GetString("tapir.observations.topic")
+			mqtttopic, err = tapir.MqttTopic(certCN, "tapir.observations.topic")
+			if err != nil {
+				fmt.Printf("Error getting MQTT topic: %v\n", err)
+				os.Exit(1)
+			}
 			signkey, err = tapir.FetchMqttSigningKey(mqtttopic, viper.GetString("tapir.observations.signingkey"))
 			if err != nil {
 				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.observations.signingkey"))
@@ -118,7 +132,11 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 			}
 
 		case "status":
-			mqtttopic = viper.GetString("tapir.status.topic")
+			mqtttopic, err = tapir.MqttTopic(certCN, "tapir.status.topic")
+			if err != nil {
+				fmt.Printf("Error getting MQTT topic: %v\n", err)
+				os.Exit(1)
+			}
 			signkey, err = tapir.FetchMqttSigningKey(mqtttopic, viper.GetString("tapir.status.signingkey"))
 			if err != nil {
 				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.status.signingkey"))
@@ -135,7 +153,13 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 			}
 
 		case "keyupload":
-			mqtttopic = viper.GetString("tapir.keyupload.topic")
+			mqtttopic, err = tapir.MqttTopic(certCN, "tapir.keyupload.topic")
+			if err != nil {
+				fmt.Printf("Error getting MQTT topic: %v\n", err)
+				os.Exit(1)
+			}
+			canPub = false
+			canSub = true
 			validate = false
 			// signkey, err = tapir.FetchMqttSigningKey(mqtttopic, viper.GetString("tapir.status.signingkey"))
 			// if err != nil {
@@ -163,7 +187,11 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 		if canSub {
 			fmt.Printf("Adding sub topic: %s\n", mqtttopic)
 			subch = make(chan tapir.MqttPkgIn, 10)
-			meng.SubToTopic(mqtttopic, valkey, subch, "struct", validate) // XXX: Brr. kludge.
+			_, err = meng.SubToTopic(mqtttopic, valkey, subch, "struct", validate) // XXX: Brr. kludge.
+			if err != nil {
+				fmt.Printf("Error from SubToTopic: %v\n", err)
+				os.Exit(1)
+			}
 		}
 
 		// cmnder, outbox, inbox, err := meng.StartEngine()
@@ -178,10 +206,11 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 
 		SetupInterruptHandler(cmnder)
 
+		fmt.Printf("subch: %+v\n", subch)
+
 		if mqttsub {
 			wg.Add(1)
-			// SetupSubPrinter(inbox)
-			SetupSubPrinter(subch)
+			go SetupSubPrinter(subch)
 		}
 
 		srcname := viper.GetString("tapir.observations.srcname")
@@ -255,6 +284,12 @@ var mqttTapirConfigCmd = &cobra.Command{
 			}
 		}()
 
+		certCN, _, _, err := tapir.FetchTapirClientCert(log.Default(), statusch)
+		if err != nil {
+			fmt.Printf("Error fetching client certificate: %v", err)
+			os.Exit(1)
+		}
+
 		meng, err := tapir.NewMqttEngine("config", mqttclientid, tapir.TapirPub, statusch, log.Default()) // pub, no sub
 		if err != nil {
 			fmt.Printf("Error from NewMqttEngine: %v\n", err)
@@ -288,8 +323,8 @@ var mqttTapirConfigCmd = &cobra.Command{
 		}
 		fmt.Printf("Global configuration:\n%s\n", string(pretty))
 
-		mqtttopic = viper.GetString("tapir.config.topic")
-		if mqtttopic == "" {
+		mqtttopic, err := tapir.MqttTopic(certCN, "tapir.config.topic")
+		if err != nil {
 			fmt.Println("Error: tapir.config.topic not specified in config")
 			os.Exit(1)
 		}
@@ -362,14 +397,20 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 			}
 		}()
 
+		certCN, _, _, err := tapir.FetchTapirClientCert(log.Default(), statusch)
+		if err != nil {
+			fmt.Printf("Error fetching client certificate: %v", err)
+			os.Exit(1)
+		}
+
 		meng, err := tapir.NewMqttEngine("observations", mqttclientid, tapir.TapirPub, statusch, log.Default()) // pub, no sub
 		if err != nil {
 			fmt.Printf("Error from NewMqttEngine: %v\n", err)
 			os.Exit(1)
 		}
 
-		mqtttopic = viper.GetString("tapir.observations.topic")
-		if mqtttopic == "" {
+		mqtttopic, err := tapir.MqttTopic(certCN, "tapir.observations.topic")
+		if err != nil {
 			fmt.Println("Error: tapir.observations.topic not specified in config")
 			os.Exit(1)
 		}
@@ -380,7 +421,7 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 			log.Fatalf("Error fetching MQTT signing key: %v", err)
 		}
 		// meng.AddTopic(mqtttopic, signkey, nil)
-		meng.PubToTopic(mqtttopic, signkey, "struct", false) // XXX: Brr. kludge.
+		meng.PubToTopic(mqtttopic, signkey, "struct", true) // XXX: Brr. kludge.
 
 		cmnder, outbox, _, err := meng.StartEngine()
 		if err != nil {
@@ -534,14 +575,20 @@ Will end the loop on the operation (or component name) "QUIT"`,
 			}
 		}()
 
+		certCN, _, _, err := tapir.FetchTapirClientCert(log.Default(), statusch)
+		if err != nil {
+			fmt.Printf("Error fetching client certificate: %v", err)
+			os.Exit(1)
+		}
+
 		meng, err := tapir.NewMqttEngine("status", mqttclientid, tapir.TapirPub, statusch, log.Default()) // pub, no sub
 		if err != nil {
 			fmt.Printf("Error from NewMqttEngine: %v\n", err)
 			os.Exit(1)
 		}
 
-		mqtttopic = viper.GetString("tapir.status.topic")
-		if mqtttopic == "" {
+		mqtttopic, err := tapir.MqttTopic(certCN, "tapir.status.topic")
+		if err != nil {
 			fmt.Println("Error: tapir.status.topic not specified in config")
 			os.Exit(1)
 		}
@@ -655,7 +702,7 @@ Will end the loop on the operation (or component name) "QUIT"`,
 			case "show":
 				var out = []string{"Component|Status|ErrorMsg|Msg|NumFailures|LastFailure|LastSuccess"}
 				for cname, comp := range tfs.ComponentStatus {
-					out = append(out, fmt.Sprintf("%s|%s|%s|%s|%d|%s|%s", cname, comp.Status, comp.ErrorMsg, comp.Msg, comp.NumFails,
+					out = append(out, fmt.Sprintf("%s|%s|%s|%s|%d|%s|%s", cname, tapir.StatusToString[comp.Status], comp.ErrorMsg, comp.Msg, comp.NumFails,
 						comp.LastFail.Format(tapir.TimeLayout), comp.LastSuccess.Format(tapir.TimeLayout)))
 				}
 				fmt.Println(columnize.SimpleFormat(out))
@@ -872,6 +919,7 @@ func ParseSources() (map[string]SourceConf, error) {
 
 // func SetupSubPrinter(inbox chan tapir.MqttPkg) {
 func SetupSubPrinter(inbox chan tapir.MqttPkgIn) {
+	fmt.Println("SetupSubPrinter: Starting")
 	go func() {
 		for pkg := range inbox {
 
@@ -914,6 +962,7 @@ func SetupSubPrinter(inbox chan tapir.MqttPkgIn) {
 				if err != nil {
 					fmt.Printf("MQTT: failed to decode json: %v", err)
 				}
+
 				fmt.Printf("Received TAPIR MQTT Message of type: %s\n", tfs.FunctionID)
 				for _, comp := range tfs.ComponentStatus {
 					switch comp.Status {
@@ -928,6 +977,33 @@ func SetupSubPrinter(inbox chan tapir.MqttPkgIn) {
 							tfs.FunctionID, comp.Component, tapir.StatusToString[comp.Status], comp.Msg, comp.LastSuccess.Format(time.RFC3339))
 					}
 				}
+
+			case strings.HasPrefix(pkg.Topic, "config/down/"): // payload is a tapir.GlobalConfig
+				var gc tapir.GlobalConfig
+				err := json.Unmarshal(pkg.Payload, &gc)
+				if err != nil {
+					fmt.Printf("MQTT: failed to decode json: %v", err)
+				}
+				yamlData, err := yaml.Marshal(gc)
+				if err != nil {
+					fmt.Printf("Error marshalling YAML data: %v\n", err)
+				}
+				fmt.Printf("Received TAPIR Global config update message:\n%s\n", string(yamlData))
+
+			case pkg.Topic == "pubkey/up/axfr/tapir-pop", pkg.Topic == "status/up/axfr/tapir-pop": // payload is a tapir.TapirPubkeyUpload
+				var tpk tapir.PubKeyUpload
+				err := json.Unmarshal(pkg.Payload, &tpk)
+				if err != nil {
+					fmt.Printf("MQTT: failed to decode json: %v", err)
+				}
+				yamlData, err := yaml.Marshal(tpk)
+				if err != nil {
+					fmt.Printf("Error marshalling YAML data: %v\n", err)
+				}
+				fmt.Printf("Received TAPIR PubKeyUpload message:\n%s\n", string(yamlData))
+
+			default:
+				fmt.Printf("Received TAPIR MQTT Message of unknown type on topic: %s\n", pkg.Topic)
 			}
 
 			// case tapir.MqttPkgIn:
