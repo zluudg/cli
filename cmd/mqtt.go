@@ -1,5 +1,5 @@
 /*
- * Copyright (c) DNS TAPIR
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
 package cmd
 
@@ -33,7 +33,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var mqttclientid, mqtttopic, defaulttopic, mqttgreylist, cfgfile string
+var mqttclientid, mqtttopic, defaulttopic, mqttgreylist, gcfgfile string
 
 var mqttfid string
 var mqttpub, mqttsub, mqttretain, mqttconfigclear bool
@@ -64,11 +64,8 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 
 		// If any status updates arrive, print them out
 		go func() {
-			for {
-				select {
-				case status := <-statusch:
-					fmt.Printf("Status update: %+v\n", status)
-				}
+			for status := range statusch {
+				fmt.Printf("Status update: %+v\n", status)
 			}
 		}()
 
@@ -83,7 +80,7 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 		var signkey *ecdsa.PrivateKey
 		var valkey *ecdsa.PublicKey
 
-		var validate bool
+		var sign, validate bool
 
 		switch mqtttopic {
 		case "config":
@@ -92,6 +89,8 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 			if err != nil {
 				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.config.signingkey"))
 				canPub = false
+			} else {
+				sign = true
 			}
 			valkey, err = tapir.FetchMqttValidatorKey(mqtttopic, viper.GetString("tapir.config.validatorkey"))
 			if err != nil {
@@ -107,6 +106,8 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 			if err != nil {
 				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.observations.signingkey"))
 				canPub = false
+			} else {
+				sign = true
 			}
 			valkey, err = tapir.FetchMqttValidatorKey(mqtttopic, viper.GetString("tapir.observations.validatorkey"))
 			if err != nil {
@@ -122,6 +123,8 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 			if err != nil {
 				fmt.Printf("Error fetching MQTT signing key: %s\n", viper.GetString("tapir.status.signingkey"))
 				canPub = false
+			} else {
+				sign = true
 			}
 			valkey, err = tapir.FetchMqttValidatorKey(mqtttopic, viper.GetString("tapir.status.validatorkey"))
 			if err != nil {
@@ -152,7 +155,7 @@ The engine can be configured to publish to and subscribe from the tapir config, 
 		if canPub {
 			fmt.Printf("Adding pub topic: %s\n", mqtttopic)
 			// meng.AddTopic(mqtttopic, signkey, valkey)
-			meng.PubToTopic(mqtttopic, signkey, "struct", true) // XXX: Brr. kludge.
+			meng.PubToTopic(mqtttopic, signkey, "struct", sign) // XXX: Brr. kludge.
 		}
 
 		var subch chan tapir.MqttPkgIn
@@ -247,11 +250,8 @@ var mqttTapirConfigCmd = &cobra.Command{
 
 		// If any status updates arrive, print them out
 		go func() {
-			for {
-				select {
-				case status := <-statusch:
-					fmt.Printf("Status update: %+v\n", status)
-				}
+			for status := range statusch {
+				fmt.Printf("Status update: %+v\n", status)
 			}
 		}()
 
@@ -261,26 +261,26 @@ var mqttTapirConfigCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if cfgfile == "" {
-			fmt.Println("Error: Configuration file not specified")
+		if gcfgfile == "" {
+			fmt.Println("Error: Global config file not specified")
 			os.Exit(1)
 		}
 
-		cfgfile = filepath.Clean(cfgfile)
-		cfgData, err := os.ReadFile(cfgfile)
+		gcfgfile = filepath.Clean(gcfgfile)
+		gcfgData, err := os.ReadFile(gcfgfile)
 		if err != nil {
-			fmt.Printf("Error reading configuration file %s: %v\n", cfgfile, err)
+			fmt.Printf("Error reading configuration file %s: %v\n", gcfgfile, err)
 			os.Exit(1)
 		}
 
 		var cf ConfigFoo
-		err = yaml.Unmarshal(cfgData, &cf)
+		err = yaml.Unmarshal(gcfgData, &cf)
 		if err != nil {
-			fmt.Printf("Error unmarshalling YAML data from file %s: %v\n", cfgfile, err)
+			fmt.Printf("Error unmarshalling YAML data from file %s: %v\n", gcfgfile, err)
 			os.Exit(1)
 		}
 
-		fmt.Printf("Global configuration loaded from %s\n", cfgfile)
+		fmt.Printf("Global configuration loaded from %s\n", gcfgfile)
 		pretty, err := yaml.Marshal(cf.GlobalConfig)
 		if err != nil {
 			fmt.Printf("Error marshalling YAML data: %v\n", err)
@@ -299,7 +299,7 @@ var mqttTapirConfigCmd = &cobra.Command{
 			fmt.Printf("Error fetching MQTT signing key: %v", err)
 			os.Exit(1)
 		}
-		meng.PubToTopic(mqtttopic, signkey, "struct", false) // XXX: Brr. kludge.
+		meng.PubToTopic(mqtttopic, signkey, "struct", true) // XXX: Brr. kludge.
 
 		cmnder, outbox, _, err := meng.StartEngine()
 		if err != nil {
@@ -315,27 +315,27 @@ var mqttTapirConfigCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		var tmsg = tapir.TapirMsg{
-			SrcName:      srcname,
-			Creator:      "tapir-cli",
-			MsgType:      "global-config",
-			GlobalConfig: cf.GlobalConfig,
-			TimeStamp:    time.Now(),
-		}
+		//		var tmsg = tapir.TapirMsg{
+		//			SrcName:      srcname,
+		//			Creator:      "tapir-cli",
+		//			MsgType:      "global-config",
+		//			GlobalConfig: cf.GlobalConfig,
+		//			TimeStamp:    time.Now(),
+		//		}
 		if mqttconfigclear {
-			tmsg.Msg = ""
+			//			tmsg.Msg = ""
 			outbox <- tapir.MqttPkgOut{
-				Type:   "text",
-				Topic:  mqtttopic,
-				Retain: true,
-				Msg:    "",
+				Type:    "raw",
+				Topic:   mqtttopic,
+				Retain:  true,
+				RawData: "",
 			}
 		} else {
 			outbox <- tapir.MqttPkgOut{
-				Type:   "data",
-				Topic:  mqtttopic,
-				Retain: mqttretain,
-				Data:   tmsg,
+				Type:    "raw",
+				Topic:   mqtttopic,
+				Retain:  mqttretain,
+				RawData: cf.GlobalConfig,
 			}
 		}
 
@@ -357,11 +357,8 @@ Will end the loop on the operation (or domain name) "QUIT"`,
 
 		// If any status updates arrive, print them out
 		go func() {
-			for {
-				select {
-				case status := <-statusch:
-					fmt.Printf("Status update: %+v\n", status)
-				}
+			for status := range statusch {
+				fmt.Printf("Status update: %+v\n", status)
 			}
 		}()
 
@@ -532,11 +529,8 @@ Will end the loop on the operation (or component name) "QUIT"`,
 
 		// If any status updates arrive, print them out
 		go func() {
-			for {
-				select {
-				case status := <-statusch:
-					fmt.Printf("Status update: %+v\n", status)
-				}
+			for status := range statusch {
+				fmt.Printf("Status update: %+v\n", status)
 			}
 		}()
 
@@ -586,7 +580,7 @@ Will end the loop on the operation (or component name) "QUIT"`,
 			ComponentStatus: map[string]tapir.TapirComponentStatus{
 				"downstream-notify": {
 					Component: "downstream-notify",
-					Status:    "failure",
+					Status:    tapir.StatusFail,
 					ErrorMsg:  "Downstream notify is boiling over",
 				},
 			},
@@ -630,17 +624,28 @@ Will end the loop on the operation (or component name) "QUIT"`,
 				if !exist {
 					tfs.ComponentStatus[cname] = tapir.TapirComponentStatus{
 						Component: cname,
-						Status:    "ok",
+						Status:    tapir.StatusOK,
 						ErrorMsg:  "",
 					}
 				}
 				comp := tfs.ComponentStatus[cname]
-				comp.Status = status
-				if status == "fail" {
+				switch status {
+				case "ok", "fail", "warn":
+				default:
+					fmt.Printf("Invalid status: %s\n", status)
+					os.Exit(1)
+				}
+				comp.Status = tapir.StringToStatus[status]
+				switch comp.Status {
+				case tapir.StatusFail:
 					comp.LastFail = time.Now()
 					comp.NumFails++
 					comp.ErrorMsg = tapir.TtyQuestion("Error message", "", false)
-				} else {
+				case tapir.StatusWarn:
+					comp.ErrorMsg = tapir.TtyQuestion("Warning message", "", false)
+					comp.LastWarn = time.Now()
+					comp.NumWarnings++
+				case tapir.StatusOK:
 					comp.LastSuccess = time.Now()
 					comp.ErrorMsg = ""
 					comp.Msg = tapir.TtyQuestion("Message", "", false)
@@ -729,7 +734,7 @@ func init() {
 	mqttEngineCmd.Flags().BoolVarP(&mqttsub, "sub", "", false, "Enable sub support")
 	mqttTapirConfigCmd.Flags().BoolVarP(&mqttretain, "retain", "R", false, "Publish a retained message")
 	mqttTapirConfigCmd.Flags().BoolVarP(&mqttconfigclear, "clear", "C", false, "Clear retained config message")
-	mqttTapirConfigCmd.Flags().StringVarP(&cfgfile, "cfgfile", "F", "", "Name of file containing global config to send")
+	mqttTapirConfigCmd.Flags().StringVarP(&gcfgfile, "cfgfile", "F", "", "Name of file containing global config to send")
 	mqttTapirBootstrapCmd.PersistentFlags().StringVarP(&mqttgreylist, "greylist", "G", "dns-tapir", "Greylist to inquire about")
 
 	mqttTapirStatusCmd.Flags().StringVarP(&mqttfid, "functionid", "F", "tapir-cli debug tool", "Function ID to send status for")
@@ -882,6 +887,8 @@ func SetupSubPrinter(inbox chan tapir.MqttPkgIn) {
 					_ = edgeId        // Avoid unused variable error
 					_ = edgeComponent // Avoid unused variable error
 
+					fmt.Printf("SetupSubPrinter: Received TAPIR MQTT Message on topic '%s':\n%+v\n", pkg.Topic, string(pkg.Payload))
+
 					var tm tapir.TapirMsg
 					err := json.Unmarshal(pkg.Payload, &tm)
 					if err != nil {
@@ -910,15 +917,15 @@ func SetupSubPrinter(inbox chan tapir.MqttPkgIn) {
 				fmt.Printf("Received TAPIR MQTT Message of type: %s\n", tfs.FunctionID)
 				for _, comp := range tfs.ComponentStatus {
 					switch comp.Status {
-					case "fail":
+					case tapir.StatusFail:
 						fmt.Printf("TAPIR-POP %s Component: %s, Status: %s, Message: %s, Time of failure: %s\n",
-							tfs.FunctionID, comp.Component, comp.Status, comp.Msg, comp.LastFail.Format(time.RFC3339))
-					case "warn":
+							tfs.FunctionID, comp.Component, tapir.StatusToString[comp.Status], comp.Msg, comp.LastFail.Format(time.RFC3339))
+					case tapir.StatusWarn:
 						fmt.Printf("TAPIR-POP %s: Component: %s, Status: %s, Message: %s, Time of warning: %s\n",
-							tfs.FunctionID, comp.Component, comp.Status, comp.Msg, comp.LastWarn.Format(time.RFC3339))
-					case "success":
+							tfs.FunctionID, comp.Component, tapir.StatusToString[comp.Status], comp.Msg, comp.LastWarn.Format(time.RFC3339))
+					case tapir.StatusOK:
 						fmt.Printf("TAPIR-POP %s Component: %s, Status: %s, Message: %s, Time of success: %s\n",
-							tfs.FunctionID, comp.Component, comp.Status, comp.Msg, comp.LastSuccess.Format(time.RFC3339))
+							tfs.FunctionID, comp.Component, tapir.StatusToString[comp.Status], comp.Msg, comp.LastSuccess.Format(time.RFC3339))
 					}
 				}
 			}

@@ -62,8 +62,8 @@ var SloggerPopStatusCmd = &cobra.Command{
 			fmt.Printf("Status for TAPIR-POP%s: %s\n", showfails, functionid)
 			out = []string{"Component|Status|Error msg|NumFailures|LastFailure|LastSuccess"}
 			for comp, v := range ps.ComponentStatus {
-				if !onlyfails || v.Status == "failure" {
-					out = append(out, fmt.Sprintf("%s|%s|%s|%d|%s|%s", comp, v.Status, v.ErrorMsg, v.NumFails,
+				if !onlyfails || v.Status == tapir.StatusFail {
+					out = append(out, fmt.Sprintf("%s|%s|%s|%d|%s|%s", comp, tapir.StatusToString[v.Status], v.ErrorMsg, v.NumFails,
 						v.LastFail.Format(tapir.TimeLayout), v.LastSuccess.Format(tapir.TimeLayout)))
 				}
 			}
@@ -101,8 +101,8 @@ var SloggerEdmStatusCmd = &cobra.Command{
 			fmt.Printf("Status for TAPIR-EDM%s: %s\n", showfails, functionid)
 			out = []string{"Component|Status|Error msg|NumFailures|LastFailure|LastSuccess"}
 			for comp, v := range ps.ComponentStatus {
-				if !onlyfails || v.Status == "failure" {
-					out = append(out, fmt.Sprintf("%s|%s|%s|%d|%s|%s", comp, v.Status, v.ErrorMsg, v.NumFails,
+				if !onlyfails || v.Status == tapir.StatusFail {
+					out = append(out, fmt.Sprintf("%s|%s|%s|%d|%s|%s", comp, tapir.StatusToString[v.Status], v.ErrorMsg, v.NumFails,
 						v.LastFail.Format(tapir.TimeLayout), v.LastSuccess.Format(tapir.TimeLayout)))
 				}
 			}
