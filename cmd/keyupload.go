@@ -63,8 +63,10 @@ var KeyUploadCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Printf("Public key loaded from %s\n", pubkeyfile)
-		fmt.Printf("Public key:\n%s\n", string(pubkeyData))
+		if tapir.GlobalCF.Debug {
+			fmt.Printf("Public key loaded from %s\n", pubkeyfile)
+			fmt.Printf("Public key:\n%s\n", string(pubkeyData))
+		}
 
 		data := tapir.TapirPubKey{
 			Pubkey: string(pubkeyData),
@@ -78,9 +80,18 @@ var KeyUploadCmd = &cobra.Command{
 		}
 
 		// Create a new struct to send off
+		var certChainPEM string
+		for _, cert := range clientCert.Certificate {
+			certChainPEM += string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert}))
+		}
+
+		if tapir.GlobalCF.Debug {
+			fmt.Printf("Client certificate chain:\n%s\n", certChainPEM)
+		}
+
 		msg := tapir.PubKeyUpload{
 			JWSMessage:    string(jwsMessage),
-			ClientCertPEM: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: clientCert.Certificate[0]})),
+			ClientCertPEM: certChainPEM,
 		}
 
 		// mqtttopic = viper.GetString("tapir.keyupload.topic")
