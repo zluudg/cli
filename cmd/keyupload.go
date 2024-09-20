@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"crypto/sha256"
 	"encoding/pem"
 	"path/filepath"
 
@@ -14,8 +15,8 @@ import (
 	"time"
 
 	"github.com/dnstapir/tapir"
-	"github.com/lestrrat-go/jwx/jwa"
-	"github.com/lestrrat-go/jwx/jws"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/spf13/cobra"
 )
 
@@ -51,6 +52,7 @@ var KeyUploadCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// Start of Selection
 		if pubkeyfile == "" {
 			fmt.Println("Error: Public key file not specified")
 			os.Exit(1)
@@ -72,13 +74,6 @@ var KeyUploadCmd = &cobra.Command{
 			Pubkey: string(pubkeyData),
 		}
 
-		// Sign the data using the client certificate's private key
-		jwsMessage, err := jws.Sign([]byte(data.Pubkey), jwa.RS256, clientCert.PrivateKey)
-		if err != nil {
-			fmt.Printf("Error signing data: %v\n", err)
-			os.Exit(1)
-		}
-
 		// Create a new struct to send off
 		var certChainPEM string
 		for _, cert := range clientCert.Certificate {
@@ -88,6 +83,26 @@ var KeyUploadCmd = &cobra.Command{
 		if tapir.GlobalCF.Debug {
 			fmt.Printf("Client certificate chain:\n%s\n", certChainPEM)
 		}
+
+		// Sign the data using the client certificate's private key and include the cert chain and key ID in the JWS header
+		headers := jws.NewHeaders()
+		headers.Set(jws.X509CertChainKey, clientCert.Certificate)
+
+		// Compute key ID as SHA-256 hash of the client certificate
+		certBytes := clientCert.Leaf.Raw
+		hash := sha256.Sum256(certBytes)
+		kid := fmt.Sprintf("%x", hash)
+		headers.Set(jws.KeyIDKey, kid)
+
+		// Fix the arguments to jws.Sign
+		jwsMessage, err := jws.Sign([]byte(data.Pubkey), jws.WithKey(jwa.RS256, clientCert.PrivateKey), jws.WithHeaders(headers))
+		if err != nil {
+			fmt.Printf("Error signing data: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("JWS Key ID: %s\n", kid)
+		fmt.Printf("JWS Message: %s\n", string(jwsMessage))
 
 		msg := tapir.PubKeyUpload{
 			JWSMessage:    string(jwsMessage),

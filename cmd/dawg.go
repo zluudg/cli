@@ -136,7 +136,7 @@ func init() {
 	dawgCmd.PersistentFlags().StringVarP(&dawgfile, "dawg", "", "",
 		"Name of DAWG file, must end in \".dawg\"")
 	dawgCompileCmd.Flags().StringVarP(&srcformat, "format", "", "",
-		"Format of text file, either cvs or text")
+		"Format of text file, either csv or text")
 	dawgCompileCmd.Flags().StringVarP(&srcfile, "src", "", "",
 		"Name of source text file")
 	//	dawgCompileCmd.Flags().StringVarP(&outfile, "outfile", "", "",

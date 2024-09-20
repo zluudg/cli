@@ -1,10 +1,20 @@
 # tapir-cli
 
-CLI utility to interact with other DNS TAPIR components
+CLI utility primarily to interact with other DNS TAPIR components.
+For this the config details needed to connect to eg. TAPIR-POP are
+located in the config files in the /etc/dnstapir/ directory.
 
-`tapir-cli` has a large number of commands and subcommands. The entire set of commands is structured as a tree with the root in the `tapi-cli` command.
-All commands, regardless of where in the tree of commands they are located, have online help via the flag `-h`. I.e. to get help on the 
-`tapir-cli pop ping` command, run:
+For some uses, though, `tapir-cli` is used in "standalone" mode. One
+example of this is the creation anad manipulation of DAWG files
+containing large lists of domain names in a compact format. To run
+`tapir-cli` in standalone mode, without the need for any config files,
+use the command flag `--standalone`.
+
+`tapir-cli` has a large number of commands and subcommands. The entire
+set of commands is structured as a tree with the root in the
+`tapi-cli` command.  All commands, regardless of where in the tree of
+commands they are located, have online help via the flag `-h`. I.e. to
+get help on the `tapir-cli pop ping` command, run:
 
 ```
 tapir-cli pop ping -h

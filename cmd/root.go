@@ -42,11 +42,14 @@ func Execute() {
 	}
 }
 
+var standalone bool
+
 func init() {
 	Prog = "tapir-cli"
 	cobra.OnInitialize(RootInitConfig)
 	cobra.OnInitialize(initConfig)
 
+	rootCmd.PersistentFlags().BoolVarP(&standalone, "standalone", "", false, "Run in standalone mode, do not connect to TAPIR-POP")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
 		fmt.Sprintf("config file (default is %s)", tapir.DefaultPopCfgFile))
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.Verbose, "verbose", "v", false, "Verbose mode")
@@ -73,6 +76,12 @@ func initConfig() {
 
 // initConfig reads in config file and ENV variables if set.
 func RootInitConfig() {
+	if standalone {
+		// In standalone mode we don't need to connect to TAPIR-POP, will not read any config files etc.
+		fmt.Printf("Running in standalone mode; no config files, etc.\n")
+		return
+	}
+
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
