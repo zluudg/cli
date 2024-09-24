@@ -164,10 +164,17 @@ var debugUpdatePopStatusCmd = &cobra.Command{
 	Use:   "update-pop-status",
 	Short: "Update the status of a TAPIR-POP component, to trigger a status update over MQTT",
 	Run: func(cmd *cobra.Command, args []string) {
+		switch popstatus {
+		case "ok", "warn", "fail":
+		default:
+			fmt.Printf("Invalid status: %s\n", popstatus)
+			os.Exit(1)
+		}
+
 		resp := SendDebugCmd(tapir.DebugPost{
 			Command:   "send-status",
 			Component: popcomponent,
-			Status:    popstatus,
+			Status:    tapir.StringToStatus[popstatus],
 		})
 		if resp.Error {
 			fmt.Printf("%s\n", resp.ErrorMsg)

@@ -59,7 +59,7 @@ var PopStatusCmd = &cobra.Command{
 			fmt.Printf("TAPIR-POP Status. Reported components: %d Total errors (since last start): %d\n", len(tfs.ComponentStatus), tfs.NumFailures)
 			var out = []string{"Component|Status|Error msg|# Fails|# Warns|LastFailure|LastSuccess"}
 			for k, v := range tfs.ComponentStatus {
-				out = append(out, fmt.Sprintf("%s|%s|%s|%d|%d|%v|%v", k, v.Status, v.ErrorMsg, v.NumFails, v.NumWarns, v.LastFail.Format(tapir.TimeLayout), v.LastSuccess.Format(tapir.TimeLayout)))
+				out = append(out, fmt.Sprintf("%s|%s|%s|%d|%d|%v|%v", k, tapir.StatusToString[v.Status], v.ErrorMsg, v.NumFails, v.NumWarnings, v.LastFail.Format(tapir.TimeLayout), v.LastSuccess.Format(tapir.TimeLayout)))
 			}
 			fmt.Printf("%s\n", columnize.SimpleFormat(out))
 		}
