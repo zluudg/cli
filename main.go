@@ -5,7 +5,7 @@
 package main
 
 import (
-	"cli/cmd"
+	"tapir-cli/cmd"
 )
 
 func main() {
