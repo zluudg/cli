@@ -1,6 +1,7 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-*/
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
+ */
+
 package cmd
 
 import (

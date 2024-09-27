@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 DNS TAPIR. All rights reserved.
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
 package cmd
 

@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 2024 DNS TAPIR
+ * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
+
 package cmd
 
 import (
@@ -27,14 +28,11 @@ type Config struct {
 type Services struct {
 }
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "tapir-cli",
 	Short: "CLI  utility used to interact with TAPIR-POP, i.e. the TAPIR Policy Processor",
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

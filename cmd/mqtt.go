@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2024 Johan Stenstam, johan.stenstam@internetstiftelsen.se
  */
+
 package cmd
 
 import (
@@ -12,7 +13,6 @@ import (
 	"path/filepath"
 	"regexp"
 
-	//	"encoding/json"
 	"fmt"
 	"io"
 	"log"

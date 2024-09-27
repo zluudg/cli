@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 	"path/filepath"
 
-	//	"encoding/json"
 	"fmt"
 	"log"
 	"os"
