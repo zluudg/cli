@@ -105,11 +105,6 @@ and usage of using your command.`,
 			os.Exit(1)
 		}
 
-		if dawgname == "" {
-			fmt.Printf("Error: DAWG name not specified.\n")
-			os.Exit(1)
-		}
-
 		fmt.Printf("Loading DAWG: %s\n", dawgfile)
 		dawgf, err := dawg.Load(dawgfile)
 		if err != nil {
