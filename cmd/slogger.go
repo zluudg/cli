@@ -180,12 +180,13 @@ func SloggerApi() (*tapir.ApiClient, error) {
 
 	if tapir.GlobalCF.UseTLS { // default = true
 		cd := viper.GetString("certs.certdir")
+        key := viper.GetString("certs.tapir-cli.key")
+        cert := viper.GetString("certs.tapir-cli.cert")
 		if cd == "" {
 			return nil, fmt.Errorf("Error: missing config key: certs.certdir")
 		}
-		cert := cd + "/" + certname
 		tlsConfig, err := tapir.NewClientConfig(viper.GetString("certs.cacertfile"),
-			cert+".key", cert+".crt")
+			key, cert)
 		if err != nil {
 			return nil, fmt.Errorf("Error: Could not set up TLS: %v", err)
 		}
