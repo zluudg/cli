@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/dnstapir/tapir"
+	"github.com/dnstapir/tapir/cmd"
 )
 
 var imr string
@@ -54,6 +55,10 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.Debug, "debug", "d", false, "Debugging output")
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.ShowHdr, "headers", "H", false, "Show column headers")
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.UseTLS, "tls", "", true, "Use a TLS connection to TAPIR-POP")
+
+	rootCmd.AddCommand(cmd.PopCmd)
+	rootCmd.AddCommand(cmd.DawgCmd)
+	rootCmd.AddCommand(cmd.ApiCmd) // TODO move into pop command
 }
 
 var validate *validator.Validate
@@ -92,7 +97,7 @@ func RootInitConfig() {
 	} else {
 		switch Prog {
 		case "tapir-cli":
-			certname = "tapir-cli"
+			tapir.GlobalCF.Certname = "tapir-cli"
 			servername = "tapir-pop"
 			viper.SetConfigFile(tapir.DefaultPopCfgFile)
 			viper.AutomaticEnv() // read in environment variables that match
@@ -150,7 +155,7 @@ func RootInitConfig() {
 		if cd == "" {
 			log.Fatalf("Error: missing config key: certs.certdir")
 		}
-		cert := cd + "/" + certname
+		cert := cd + "/" + tapir.GlobalCF.Certname
 		tlsConfig, err := tapir.NewClientConfig(viper.GetString("certs.cacertfile"),
 			cert+".key", cert+".crt")
 		if err != nil {
