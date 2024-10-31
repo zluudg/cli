@@ -59,6 +59,7 @@ func init() {
 	rootCmd.AddCommand(cmd.PopCmd)
 	rootCmd.AddCommand(cmd.DawgCmd)
 	rootCmd.AddCommand(cmd.ApiCmd) // TODO move into pop command
+	rootCmd.AddCommand(cmd.ColourlistsCmd) // TODO move into pop command
 }
 
 var validate *validator.Validate
