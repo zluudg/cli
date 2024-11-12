@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+    "strings"
 	"time"
 
 	"github.com/dnstapir/tapir"
@@ -69,17 +70,28 @@ var debugColourlistsCmd = &cobra.Command{
 		if resp.Error {
 			fmt.Printf("%s\n", resp.ErrorMsg)
 		}
+        fmtstring := "%-35s|%-20s|%-10s|%-10s\n"
 
 		//		fmt.Printf("Received %d bytes of data\n", len(resp.Msg))
 
+        // print the column headings
+        fmt.Printf(fmtstring, "Domain", "Source", "Src Fmt", "Colour")
+        fmt.Println(strings.Repeat("-", 78)) // A nice ruler over the data rows
+
 		for _, l := range resp.Lists["whitelist"] {
-			fmt.Printf("white:%s\tcount=%d\tdesc=%s:\n\n%v\n\n", l.Name, len(l.Names), l.Description, l.Names)
+            for _, n := range l.Names {
+                fmt.Printf(fmtstring, n.Name, l.Name, "-", "white")
+            }
 		}
 		for _, l := range resp.Lists["blacklist"] {
-			fmt.Printf("black:%s\tcount=%d\tdesc=%s:\n\n%v\n\n", l.Name, len(l.Names), l.Description, l.Names)
+            for _, n := range l.Names {
+                fmt.Printf(fmtstring, n.Name, l.Name, "-", "black")
+            }
 		}
 		for _, l := range resp.Lists["greylist"] {
-			fmt.Printf("grey:%s\tcount=%d\tdesc=%s:\n\n%v\n\n", l.Name, len(l.Names), l.Description, l.Names)
+            for _, n := range l.Names {
+                fmt.Printf(fmtstring, n.Name, l.Name, l.SrcFormat, "grey")
+            }
 		}
 	},
 }
