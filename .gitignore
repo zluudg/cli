@@ -27,3 +27,5 @@ go.work
 # Local additions
 tapir-cli
 version.go
+*.rpm
+nfpm.yaml
