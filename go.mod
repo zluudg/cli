@@ -3,7 +3,7 @@ module tapir-cli
 go 1.21.0
 
 require (
-	github.com/dnstapir/tapir v0.0.0-20250114144620-18cc0cdb5c33
+	github.com/dnstapir/tapir v0.0.0-20250324193044-17d167cd3ab7
 	github.com/go-playground/validator/v10 v10.9.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.18.1
@@ -54,7 +54,7 @@ require (
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/mod v0.17.0 // indirect
-	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
