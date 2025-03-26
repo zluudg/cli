@@ -17,7 +17,7 @@ jobs:
       - name: Get nFPM
         run: wget https://github.com/goreleaser/nfpm/releases/download/v2.41.3/nfpm_2.41.3_amd64.deb
       - name: Install nFPM
-        run: apt install ./nfpm_2.41.3_amd64.deb
+        run: sudo apt install ./nfpm_2.41.3_amd64.deb -y
       - name: Get Version
         id: get_version
         run: echo "::set-output name=version::$(cat VERSION)"
