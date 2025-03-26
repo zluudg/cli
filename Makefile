@@ -35,5 +35,10 @@ clean:
 install:
 	install -b -c -s ${PROG} /usr/local/bin/
 
+rpm: build
+	sed -e "s/@@VERSION@@/$(VERSION)/g" rpm/nfpm.yaml.in > rpm/nfpm.yaml
+	nfpm pkg -f rpm/nfpm.yaml --packager rpm --target ./rpm/out
+
+
 .PHONY: build clean
 
