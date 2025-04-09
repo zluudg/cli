@@ -1,0 +1,14 @@
+on:
+  release:
+    types: [published]
+
+jobs:
+  artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
+        uses: actions/checkout@v2
+      - name: Get rpmbuild
+        uses: sudo apt install rpmbuild
+      - name: Build rpm
+        run: make rpm
