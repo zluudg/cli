@@ -1,0 +1,53 @@
+Name:           tapir-cli
+Version:        @@VERSION@@
+Release:        1%{?dist}
+Group:          dnstapir/edge
+Summary:        DNSTAPIR EDGE Cli Tool
+License:        BSD
+URL:            https://www.github.com/dnstapir/cli
+BuildRequires:  make
+Source0:        %{name}
+Source1:        tapir-renew.service
+Source2:        tapir-renew.timer
+Source3:        tapir-cli.yaml
+Source4:        tapir-cli.sysusers
+
+%description
+DNSTAPIR EDGE Cli Tool for managing an EDGE deployment
+
+%install
+mkdir -p %{buildroot}%{_bindir}
+mkdir -p %{buildroot}%{_unitdir}
+mkdir -p %{buildroot}%{_sysconfdir}/dnstapir/certs
+install -p -m 0755 %{SOURCE0} %{buildroot}%{_bindir}/%{name}
+install -m 0644 %{SOURCE1} %{buildroot}%{_unitdir}
+install -m 0644 %{SOURCE2} %{buildroot}%{_unitdir}
+install -m 0640 %{SOURCE3} %{buildroot}%{_sysconfdir}/dnstapir/
+install -m 0644 -D %{SOURCE4} %{buildroot}%{_sysusersdir}/tapir-edge.conf
+
+%files
+%attr(0660,tapir-cli,dnstapir) %dir %{_sysconfdir}/dnstapir
+%attr(0660,tapir-cli,dnstapir) %dir %{_sysconfdir}/dnstapir/certs
+%attr(0770,tapir-cli,dnstapir) %{_bindir}/%{name}
+%attr(0660,tapir-cli,dnstapir) %{_sysconfdir}/dnstapir/tapir-cli.yaml
+%attr(0664,tapir-cli,dnstapir) %{_sysusersdir}/tapir-edge.conf
+%attr(0644,tapir-cli,dnstapir) %{_unitdir}/tapir-renew.service
+%attr(0644,tapir-cli,dnstapir) %{_unitdir}/tapir-renew.timer
+
+%attr(0660,tapir-cli,dnstapir) %ghost %{_sysconfdir}/dnstapir/certs/ca.crt
+%attr(0660,tapir-cli,dnstapir) %ghost %{_sysconfdir}/dnstapir/certs/tls.crt
+%attr(0660,tapir-cli,dnstapir) %ghost %{_sysconfdir}/dnstapir/certs/validation-keys.json
+%attr(0660,tapir-cli,dnstapir) %ghost %{_sysconfdir}/dnstapir/certs/tls.key
+%attr(0660,tapir-cli,dnstapir) %ghost %{_sysconfdir}/dnstapir/certs/datakey-priv.json
+
+%pre
+
+%post
+
+%preun
+
+%postun
+
+%check
+
+%changelog
