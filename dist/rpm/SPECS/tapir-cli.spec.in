@@ -5,7 +5,7 @@ Group:          dnstapir/edge
 Summary:        DNSTAPIR EDGE Cli Tool
 License:        BSD
 URL:            https://www.github.com/dnstapir/cli
-BuildRequires:  make
+#BuildRequires:  make # Will break builds on deb systems because rpmbuild has no way of knowing what is installed there
 Source0:        %{name}
 Source1:        tapir-renew.service
 Source2:        tapir-renew.timer
