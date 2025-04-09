@@ -10,6 +10,6 @@ jobs:
       - name: Get code
         uses: actions/checkout@v2
       - name: Get rpmbuild
-        run: sudo apt install rpmbuild
+        run: sudo apt install rpmbuild -y
       - name: Build rpm
         run: make rpm
