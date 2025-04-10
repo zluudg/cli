@@ -15,6 +15,9 @@ Source4:        tapir-cli.sysusers
 %description
 DNSTAPIR EDGE Cli Tool for managing an EDGE deployment
 
+%{!?_unitdir: %define _unitdir /usr/lib/systemd/system/}
+%{!?_sysusersdir: %define _sysusersdir /usr/lib/sysusers.d/}
+
 %install
 mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_unitdir}
