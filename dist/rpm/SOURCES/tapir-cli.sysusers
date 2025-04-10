@@ -1,0 +1,2 @@
+u tapir-cli - "DNSTAPIR EDGE CLI" /etc/dnstapir/ /sbin/nologin
+g dnstapir -
