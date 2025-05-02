@@ -17,8 +17,7 @@ import (
 	"github.com/dnstapir/tapir/cmd"
 )
 
-var imr string
-var servername, certname, cfgFile, Prog string
+var cfgFile string
 
 var api *tapir.ApiClient
 
@@ -44,13 +43,12 @@ func Execute() {
 var standalone bool
 
 func init() {
-	Prog = "tapir-cli"
 	cobra.OnInitialize(RootInitConfig)
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().BoolVarP(&standalone, "standalone", "", false, "Run in standalone mode, do not connect to TAPIR-POP")
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
-		fmt.Sprintf("config file (default is %s)", tapir.DefaultPopCfgFile))
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", tapir.DefaultTapirCliCfgFile,
+		fmt.Sprintf("config file (default is %s)", tapir.DefaultTapirCliCfgFile))
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.Verbose, "verbose", "v", false, "Verbose mode")
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.Debug, "debug", "d", false, "Debugging output")
 	rootCmd.PersistentFlags().BoolVarP(&tapir.GlobalCF.ShowHdr, "headers", "H", false, "Show column headers")
@@ -58,8 +56,10 @@ func init() {
 
 	rootCmd.AddCommand(cmd.PopCmd)
 	rootCmd.AddCommand(cmd.DawgCmd)
-	rootCmd.AddCommand(cmd.ApiCmd) // TODO move into pop command
+	rootCmd.AddCommand(cmd.ApiCmd)         // TODO move into pop command
 	rootCmd.AddCommand(cmd.FilterlistsCmd) // TODO move into pop command
+	rootCmd.AddCommand(cmd.EnrollCmd)
+	rootCmd.AddCommand(cmd.RenewCmd)
 }
 
 var validate *validator.Validate
@@ -86,46 +86,13 @@ func RootInitConfig() {
 		return
 	}
 
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-		viper.AutomaticEnv() // read in environment variables that match
+	// Use config file from the flag.
+	viper.SetConfigFile(cfgFile)
+	viper.AutomaticEnv() // read in environment variables that match
 
-		// If a config file is found, read it in. Terminate on all errors.
-		if err := viper.ReadInConfig(); err != nil {
-			log.Fatalf("Error reading config '%s': %v\n", cfgFile, err)
-		}
-	} else {
-		switch Prog {
-		case "tapir-cli":
-			tapir.GlobalCF.Certname = "tapir-cli"
-			servername = "tapir-pop"
-			viper.SetConfigFile(tapir.DefaultPopCfgFile)
-			viper.AutomaticEnv() // read in environment variables that match
-
-			// If a config file is found, read it in.
-			if err := viper.ReadInConfig(); err != nil {
-				fmt.Printf("Error reading config '%s': %v\n", viper.ConfigFileUsed(), err)
-			}
-			if tapir.GlobalCF.Debug {
-				fmt.Println("Using config file:", viper.ConfigFileUsed())
-			}
-
-			viper.SetConfigFile(tapir.DefaultTapirCliCfgFile)
-			viper.AutomaticEnv() // read in environment variables that match
-
-			// If a config file is found, read it in.
-			if err := viper.MergeInConfig(); err != nil {
-				fmt.Printf("Error reading config '%s': %v\n", viper.ConfigFileUsed(), err)
-			}
-			if tapir.GlobalCF.Debug {
-				fmt.Println("Using config file:", viper.ConfigFileUsed())
-			}
-
-		default:
-			fmt.Printf("Unknown value for Prog: \"%s\"\n", Prog)
-			os.Exit(1)
-		}
+	// If a config file is found, read it in. Terminate on all errors.
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("Error reading config '%s': %v\n", cfgFile, err)
 	}
 
 	validate = validator.New() // We need to initialize the Validate object in libcli!
@@ -133,21 +100,21 @@ func RootInitConfig() {
 	//		log.Fatalf("Missing required attributes in config %s:\n%v\n", viper.ConfigFileUsed(), err)
 	//	}
 
-	baseurl := viper.GetString("cli." + servername + ".url")
+	baseurl := viper.GetString("cli.tapir-pop.url")
 	if baseurl == "" {
-		log.Fatalf("Error: missing config key: cli.%s.url", servername)
+		log.Fatalf("Error: missing config key: cli.tapir-pop.url")
 	}
 	if tapir.GlobalCF.UseTLS {
-		baseurl = viper.GetString("cli." + servername + ".tlsurl")
+		baseurl = viper.GetString("cli.tapir-pop.tlsurl")
 		if baseurl == "" {
-			log.Fatalf("Error: missing config key: cli.%s.tlsurl", servername)
+			log.Fatalf("Error: missing config key: cli.tapir-pop.tlsurl")
 		}
 	}
 
 	var err error
 	api = &tapir.ApiClient{
 		BaseUrl:    baseurl,
-		ApiKey:     viper.GetString("cli." + servername + ".apikey"),
+		ApiKey:     viper.GetString("cli.tapir-pop.apikey"),
 		AuthMethod: "X-API-Key",
 	}
 
