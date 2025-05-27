@@ -12,10 +12,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 h1:rpfIENRNNilwHwZeG5+P150SMrnNEcHYvcCuK6dPZSg=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0/go.mod h1:v57UDF4pDQJcEfFUCRop3lJL149eHGSe9Jvczhzjo/0=
-github.com/dnstapir/tapir v0.0.0-20250408100719-fcebd9b37217 h1:PUJrkaScS2igvaha6YxCL4rrbMhO//E85ZxJqbAFjH8=
-github.com/dnstapir/tapir v0.0.0-20250408100719-fcebd9b37217/go.mod h1:TL4gggXXp0/H8GhSBS/yO1IdU3gspoKewOKer9Ep+90=
-github.com/dnstapir/tapir v0.0.0-20250430195429-3e850b26ca52 h1:qaXL0Sqbf9plckB9vEsDC3qDAduQfaIp0yoNN7t5Nqc=
-github.com/dnstapir/tapir v0.0.0-20250430195429-3e850b26ca52/go.mod h1:TL4gggXXp0/H8GhSBS/yO1IdU3gspoKewOKer9Ep+90=
+github.com/dnstapir/tapir v0.0.0-20250527085005-d2d7ecec0b06 h1:HNjMEjsZDgdg6iCaoxqRMK4ueZtiUhGEojyZfdH8yd4=
+github.com/dnstapir/tapir v0.0.0-20250527085005-d2d7ecec0b06/go.mod h1:A6BFxLXbsLJNj80yFy/OWVb7RmLyFIvXDgvFtRSN3ho=
 github.com/eclipse/paho.golang v0.21.0 h1:cxxEReu+iFbA5RrHfRGxJOh8tXZKDywuehneoeBeyn8=
 github.com/eclipse/paho.golang v0.21.0/go.mod h1:GHF6vy7SvDbDHBguaUpfuBkEB5G6j0zKxMG4gbh6QRQ=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=
