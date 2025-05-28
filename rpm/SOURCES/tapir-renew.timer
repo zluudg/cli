@@ -1,0 +1,14 @@
+[Unit]
+Description=Renew DNSTAPIR mTLS certificate every week
+ConditionPathExists=/etc/dnstapir/certs/datakey-priv.json
+ConditionPathExists=/etc/dnstapir/certs/ca.crt
+ConditionPathExists=/etc/dnstapir/certs/tls.key
+ConditionPathExists=/etc/dnstapir/certs/tls.crt
+
+[Timer]
+OnCalendar=weekly
+AccuracySec=1h
+RandomizedDelaySec=100min
+
+[Install]
+WantedBy=timers.target
