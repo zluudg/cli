@@ -27,3 +27,12 @@ go.work
 # Local additions
 tapir-cli
 version.go
+
+# Ignore rpm build directory and related stuff
+*.tar.gz
+*.src.rpm
+#rpm/
+#!rpm/SOURCES/tapir-renew.service
+#!rpm/SOURCES/tapir-renew.timer
+#!rpm/SOURCES/tapir-cli.yaml
+#!rpm/SPECS/tapir-cli.spec

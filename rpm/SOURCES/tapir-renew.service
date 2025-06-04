@@ -1,0 +1,13 @@
+[Unit]
+Description=DNSTAPIR EDGE Certificate Renewal
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=tapir-renew
+Group=dnstapir
+ExecStart=/usr/bin/tapir-cli --standalone renew \
+    --renew-datakey /etc/dnstapir/certs/datakey-priv.json \
+    --renew-cacert-out /etc/dnstapir/certs/ca.crt \
+    --renew-clientkey /etc/dnstapir/certs/tls.key \
+    --renew-clientcert-out /etc/dnstapir/certs/tls.crt
